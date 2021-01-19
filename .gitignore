@@ -125,3 +125,4 @@ octave-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/julia,c,octave,vscode
 
+matrixalloc
