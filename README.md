@@ -3,9 +3,9 @@
 Este respositório contém o material usado no minicurso **TUTORIAL DA LINGUAGEM JULIA PARA OTIMIZAÇÃO**
 
 
-<!-- - Playlist do Youtube: https://www.youtube.com/playlist?list=PLOOY0eChA1uyk_01nGJVmcQGvcJq9h6_6 -->
+<!-- - Playlist do Youtube:  -->
 
-<!-- [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/abelsiqueira/otimizacao-em-julia/main) -->
+<!-- [![Binder](https://mybinder.org/badge_logo.svg)]() -->
 
 ## Licença de uso
 
