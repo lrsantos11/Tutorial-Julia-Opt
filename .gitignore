@@ -1,6 +1,6 @@
 
-# Created by https://www.toptal.com/developers/gitignore/api/julia,c,octave,vscode
-# Edit at https://www.toptal.com/developers/gitignore?templates=julia,c,octave,vscode
+# Created by https://www.toptal.com/developers/gitignore/api/jupyternotebooks,julia,vscode,octave,matlab,c
+# Edit at https://www.toptal.com/developers/gitignore?templates=jupyternotebooks,julia,vscode,octave,matlab,c
 
 ### C ###
 # Prerequisites
@@ -82,7 +82,21 @@ docs/site/
 # environment.
 Manifest.toml
 
-### Octave ###
+### JupyterNotebooks ###
+# gitignore template for Jupyter Notebooks
+# website: http://jupyter.org/
+
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Remove previous ipynb_checkpoints
+#   git rm -r .ipynb_checkpoints/
+
+### MATLAB ###
 # Windows default autosave extension
 *.asv
 
@@ -115,6 +129,27 @@ codegen/
 # Octave session info
 octave-workspace
 
+### Octave ###
+# Windows default autosave extension
+
+# OSX / *nix default autosave extension
+
+# Compiled MEX binaries (all platforms)
+
+# Packaged app and toolbox files
+
+# Generated helpsearch folders
+
+# Simulink code generation folders
+
+# Matlab code generation folders
+
+# Simulink autosave extension
+
+# Simulink cache files
+
+# Octave session info
+
 ### vscode ###
 .vscode/*
 !.vscode/settings.json
@@ -123,7 +158,7 @@ octave-workspace
 !.vscode/extensions.json
 *.code-workspace
 
-# End of https://www.toptal.com/developers/gitignore/api/julia,c,octave,vscode
+# End of https://www.toptal.com/developers/gitignore/api/jupyternotebooks,julia,vscode,octave,matlab,c
 
 matrixalloc
 notebooks/*.gif
