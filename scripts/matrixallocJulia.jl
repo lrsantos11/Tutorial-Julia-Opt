@@ -1,7 +1,7 @@
 __precompile__()
 using BenchmarkTools, LinearAlgebra
 
-function AddMatRowWise!(MatrixA::Matrix{Float64})
+function AddMatRowWise(MatrixA::Matrix{Float64})
     NumRows,NumCols = size(MatrixA)
     for  i = 1:NumRows
         for j = 1:NumCols
@@ -11,7 +11,7 @@ function AddMatRowWise!(MatrixA::Matrix{Float64})
 end
 
 
-function AddMatColWise!(MatrixA::Matrix{Float64})
+function AddMatColWise(MatrixA::Matrix{Float64})
     NumRows,NumCols = size(MatrixA)
     for  j = 1:NumCols
         for i = 1:NumRows
@@ -21,20 +21,23 @@ function AddMatColWise!(MatrixA::Matrix{Float64})
 end
 
 function askdimensions()
-	print("Enter rows and column for matrix: ");
-    Num = parse.(Int,split(readline()))
-    return Num[1],Num[2]
+    println("Enter the number of rows:")
+    NumRows = parse(Int64, readline())
+    println("Enter the number of columns:")
+    NumCols = parse(Int64, readline())
+    return NumRows, NumCols
 end
 
 NumRows, NumCols = askdimensions()
 
 MatrixA = Matrix{Float64}(undef,NumRows,NumCols)
 
-cpu_time_used_row = @belapsed AddMatRowWise!($MatrixA)
-cpu_time_used_col = @belapsed AddMatColWise!($MatrixA)
+cpu_time_used_row = @belapsed AddMatRowWise($MatrixA)
+
+cpu_time_used_col = @belapsed AddMatColWise($MatrixA)
 
 
-println("Time for allocate row-wise: $cpu_time_used_row seconds")
+println("Time for allocate row-major: $cpu_time_used_row seconds")
 
-println("Time for allocate column-wise: $cpu_time_used_col seconds")
+println("Time for allocate column-major: $cpu_time_used_col seconds")
 
