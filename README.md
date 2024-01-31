@@ -31,9 +31,6 @@ Este respositório contém o material usado no minicurso **Tutorial de Julia par
         * Aula 04 - [Parte única](https://youtu.be/uB-QfWI9CuY) -->
 --- 
 
-- Clicando em [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/lrsantos11/Tutorial-Julia-Opt/main) é possível usar o material em seu navegador através do [Binder](https://mybinder.org)
-
---- 
 ## Licença de uso
 
 O material contido aqui é distribuído sob a licença [Creative Commons Atribuição-NãoComerical-CompartilhaIgual (CC BY-NC-SA)](https://creativecommons.org/licenses/by-nc-sa/4.0), salvo quando indicado o contrário.
