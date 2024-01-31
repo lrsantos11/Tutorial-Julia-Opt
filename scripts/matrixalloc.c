@@ -7,29 +7,29 @@ void AddMatColWise(double **MatrixA,int NumRows,int NumCols);
 
 int main()
 {
-	int NumRows, NumCols;
+	int NumCols;
     clock_t start, end;
     double cpu_time_used_row, cpu_time_used_col;
 
 
-	printf("Enter rows and column for matrix: ");
-	scanf("%d %d", &NumRows, &NumCols);
-    
-    printf("Number of rows: %d\nNumber of columns: %d\n", NumRows, NumCols);
+	printf("Enter matrix dimension: ");
+	scanf("%d",  &NumCols);
 
-    double **MatrixA = (double **)malloc(NumRows * sizeof(double *)); 
-        for (int i=0; i<NumRows; i++) 
+    printf("Matrix Dimension  %d x %d\n", NumCols, NumCols);
+
+    double **MatrixA = (double **)malloc(NumCols * sizeof(double *)); 
+        for (int i=0; i<NumCols; i++) 
              MatrixA[i] = (double *)malloc(NumCols * sizeof(double)); 
 
     start = clock();
-    AddMatRowWise(MatrixA,NumRows,NumCols);
+    AddMatRowWise(MatrixA,NumCols,NumCols);
     end = clock();
     cpu_time_used_row = ((double) (end - start)) / CLOCKS_PER_SEC;
 
     printf("Time for allocate row-wise: %f seconds\n", cpu_time_used_row);
 
     start = clock();
-    AddMatColWise(MatrixA,NumRows,NumCols);
+    AddMatColWise(MatrixA,NumCols,NumCols);
     end = clock();
     cpu_time_used_row = ((double) (end - start)) / CLOCKS_PER_SEC;
 

@@ -21,17 +21,19 @@ function AddMatColWise!(MatrixA::Matrix{Float64})
 end
 
 function askdimensions()
-	print("Enter rows and column for matrix: ");
-    Num = parse.(Int,split(readline()))
-    return Num[1],Num[2]
+	print("Enter matrix dimension: ");
+    Num = parse(Int,readline())
+    return Num
 end
 
-NumRows, NumCols = askdimensions()
+NumCols = askdimensions()
 
-MatrixA = Matrix{Float64}(undef,NumRows,NumCols)
+MatrixA = Matrix{Float64}(undef, NumCols, NumCols)
 
-cpu_time_used_row = @belapsed AddMatRowWise!($MatrixA)
-cpu_time_used_col = @belapsed AddMatColWise!($MatrixA)
+println("Matrix size: ", size(MatrixA))
+println("Computing time for row-wise and column-wise allocation...")
+cpu_time_used_row = @elapsed AddMatRowWise!(MatrixA)
+cpu_time_used_col = @elapsed AddMatColWise!(MatrixA)
 
 
 println("Time for allocate row-wise: $cpu_time_used_row seconds")
