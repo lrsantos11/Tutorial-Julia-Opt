@@ -8,18 +8,19 @@ Este respositório contém o material usado no minicurso **Tutorial de Julia par
     * Email para contato: [l.r.santos@ufsc.br](mailto:l.r.santos@ufsc.br) ou [lrsantos11@gmail.com](mailto:lrsantos11@ufsc.br)
 ---
 ### Roadmap do curso 
-* Usaremos o [Julia](https://www.julialang.org)  através de [Pluto Notebooks](https:/plutojl.org/) (e possivelmente [VSCode](https://www.julia-vscode.org/))
-    * Esta [playlist do YouTube](https://youtube.com/playlist?list=PLIFgJAiAvzyFlCskAMgMFEtRWIY5OaNt_) contém tutoriais de instalação do Julia e VSCode.
+* Usaremos o [Julia](https://www.julialang.org)  através de [Pluto Notebooks](https:/plutojl.org/) (e possivelmente [VSCode+Julia](https://www.julia-vscode.org/))
+    * Esta [playlist do YouTube](https://youtube.com/playlist?list=PLIFgJAiAvzyFlCskAMgMFEtRWIY5OaNt_) contém tutoriais de instalação do [Julia](https://www.julialang.org/downloads/) e [VSCode+Julia](https://www.julia-vscode.org/docs/dev/gettingstarted/).
+    * Aqui há um [Tutorial (em inglês)](https://computationalthinking.mit.edu/Fall23/installation/) mais atualizado para instalação de Julia + Pluto.jl.
 
 #### Aula 01
-* Introdução ao Julia
+* Introdução e Apresentação de [Julia](http://julialang.org)
 * [JuMP](https://jump.dev) para modelagem de problemas de otimização
 * Solvers que podem ser acoplados ao JuMP
 
 #### Aula 02
 * Julia para Algoritmos de Otimização
 * [NLPModels.jl](https://github.com/JuliaSmoothOptimizers/NLPModels.jl)
-* Comparando algoritmos com `BenchmarkTools.jl` e `BenchmarkProfiles.jl`
+* Comparando algoritmos com `BenchmarkProfiles.jl`
 
 
 <!-- - [Playlist](https://youtube.com/playlist?list=PLIFgJAiAvzyF0u7noLTInqJPwPVCD6NFx) com todos os vídeos do tutorial
