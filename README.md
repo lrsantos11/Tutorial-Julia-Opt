@@ -2,19 +2,33 @@
 
 Este respositório contém o material usado no minicurso **Tutorial de Julia para Otimização**
 
+
 ### Ministrante
-- Luiz-Rafael Santos ([LABMAC/UFSC/Blumenau](http://labmac.mat.blumenau.ufsc.br))
+- Luiz-Rafael Santos (https://lrsantos11.github.io) do ([LABMAC/UFSC/Blumenau](http://labmac.mat.blumenau.ufsc.br))
     * Email para contato: [l.r.santos@ufsc.br](mailto:l.r.santos@ufsc.br) ou [lrsantos11@gmail.com](mailto:lrsantos11@ufsc.br)
+---
+### Roadmap do curso 
+* Usaremos o [Julia](https://www.julialang.org)  através de [Pluto Notebooks](https:/plutojl.org/) (e possivelmente [VSCode](https://www.julia-vscode.org/))
+    * Esta [playlist do YouTube](https://youtube.com/playlist?list=PLIFgJAiAvzyFlCskAMgMFEtRWIY5OaNt_) contém tutoriais de instalação do Julia e VSCode.
 
-- Usaremos o [Julia](https://www.julialang.org)  através de notebooks [Jupyter](https://jupyter.org/)+[IJulia](https://github.com/JuliaLang/IJulia.jl) (e possivelmente [VSCode](https://www.julia-vscode.org/))
-    * A playlist contém tutoriais de instalação do Julia, Jupyter+IJulia e VSCode: [YouTube](https://youtube.com/playlist?list=PLIFgJAiAvzyFlCskAMgMFEtRWIY5OaNt_)
+#### Aula 01
+* Introdução ao Julia
+* [JuMP](https://jump.dev) para modelagem de problemas de otimização
+* Solvers que podem ser acoplados ao JuMP
 
-- [Playlist](https://youtube.com/playlist?list=PLIFgJAiAvzyF0u7noLTInqJPwPVCD6NFx) com todos os vídeos do tutorial
+#### Aula 02
+* Julia para Algoritmos de Otimização
+* [NLPModels.jl](https://github.com/JuliaSmoothOptimizers/NLPModels.jl)
+* Comparando algoritmos com `BenchmarkTools.jl` e `BenchmarkProfiles.jl`
+
+
+<!-- - [Playlist](https://youtube.com/playlist?list=PLIFgJAiAvzyF0u7noLTInqJPwPVCD6NFx) com todos os vídeos do tutorial
     - Vídeos de cada aula 
         * Aula 01 - [Parte 1](https://youtu.be/HRbmKzU1QTA) e [Parte 2](https://youtu.be/B8LRYx7wv8Q)
         * Aula 02 - Parte 1 (ainda não disponível) e [Parte 2](https://youtu.be/1beAM7YL734)
         * Aula 03 - [Parte única](https://youtu.be/EYdcxFnGSdk)
-        * Aula 04 - [Parte única](https://youtu.be/uB-QfWI9CuY)
+        * Aula 04 - [Parte única](https://youtu.be/uB-QfWI9CuY) -->
+--- 
 
 - Clicando em [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/lrsantos11/Tutorial-Julia-Opt/main) é possível usar o material em seu navegador através do [Binder](https://mybinder.org)
 
