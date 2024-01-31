@@ -179,6 +179,7 @@ let
      # declare solution
 	@show value(x)
 	@show value(y)
+	@show objective_value(lpmodel)
 end
 
 # ╔═╡ e0e30ab6-ca3a-4d6f-ba5b-28ba63dc5ce2
@@ -308,6 +309,12 @@ julia> A = [exp((x^2 - y^2)/2)/2 for x in X, y in Y]
 
 # ╔═╡ 1bb0949f-ca58-4348-b304-aab2268d27ff
 M = [i+j for i in 1:3, j in 1:3]
+
+# ╔═╡ 6aa3b797-cd84-4446-a87d-5403718d5823
+func_test(x) = x^2 - 5x + 6
+
+# ╔═╡ d61193ac-7636-4e12-9395-5d3d58778e6d
+func_test.(M)
 
 # ╔═╡ a5e935fa-998f-47b7-ae61-1a1db0645e0e
 [diag(M,i) for i in -2:2]
@@ -1625,7 +1632,7 @@ version = "1.4.1+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═f4520f5a-bb8d-4d37-b005-0cb580f70591
+# ╟─f4520f5a-bb8d-4d37-b005-0cb580f70591
 # ╟─e6221ef2-4e7a-4818-8535-bbb5702dfe47
 # ╟─e76a9f4d-f131-4b09-8a80-f433b7c493f3
 # ╟─b135c605-a540-4902-929e-7c14cf563b49
@@ -1647,6 +1654,8 @@ version = "1.4.1+0"
 # ╟─765a3a61-bc92-40e7-9528-1de011bb5ec1
 # ╟─48f81116-2040-4b7c-9539-dd6bfb9fd4ff
 # ╠═1bb0949f-ca58-4348-b304-aab2268d27ff
+# ╠═6aa3b797-cd84-4446-a87d-5403718d5823
+# ╠═d61193ac-7636-4e12-9395-5d3d58778e6d
 # ╠═a5e935fa-998f-47b7-ae61-1a1db0645e0e
 # ╠═9af7ffd6-4bdf-4703-bc08-9024220dc4c9
 # ╠═6545adae-a30e-41f6-ace8-c26702c66b9a

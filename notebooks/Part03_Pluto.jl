@@ -296,7 +296,7 @@ md"""
 # ╔═╡ 241ff7ea-6063-4c4c-9edd-a7c708b09ed3
     function iter_gradient(xₖ, dₖ,dotdₖ, quad)
         """
-		   Basic iteration of GD
+		Basic iteration of GD
 		Parameters:
 		xₖ: current iteration
 		dₖ: current direction
@@ -464,13 +464,13 @@ md"""
 begin
     function iter_CG(xₖ, rₖ, dotrₖ,dₖ, quad, k)
         """
-        Iteração basica de CG
-        Parâmetros:
-        xₖ: iteração atual
-        rₖ: residuo atual
-        dotrₖ: prod interno rₖ
-        dₖ: direção atual
-        quad: quadratica de interesse
+        Basic CG Iteration
+        Parameters:
+        xₖ: present iteration
+        rₖ: resent residual
+        dotrₖ: inner product  rₖ
+        dₖ: present direciton 
+        quad: quadratic of interest
         """
         Qdₖ = quad.Q*dₖ
         
@@ -509,12 +509,12 @@ md"""
 # ╔═╡ cc50257d-7b7a-4ef9-9917-607f401025ca
   function CG(quad::Quadratic,x₀::Vector;itmax::Int = 10,ε::Float64 = 1e-8)
            """
-        Método de Gradientes Conjugados
-        Parâmetros:
-        quad: Quadratica
-        x₀: ponto inicial
-        itmax: número max de iterçãoes de CG
-        ε: tolerância
+        CG Method
+        Parameters:
+        quad: Quadratic
+        x₀: inicial point
+        itmax: max number of iter
+        ε: tol
          """
         xₖ = x₀
         rₖ = -grad(quad,xₖ)
@@ -532,7 +532,7 @@ md"""
 
 # ╔═╡ e881d2e8-2e61-4d55-a400-f62fecae5bfd
 md"""
-## Exemplos com `BigFloat` e matrizes maiores"""
+## `BigFloat`"""
 
 # ╔═╡ c9bac807-ad0d-47e0-a5d1-9afaaaf52a98
 eps()
@@ -1799,8 +1799,8 @@ version = "1.4.1+0"
 # ╠═7423463b-ede0-4a76-8aed-a14b61bbaf45
 # ╠═2eecf09f-bb61-4932-960f-c756e90d4cc0
 # ╠═80fca89d-1706-4ce0-abc5-0f14b29e5764
-# ╠═51ad905b-efad-4461-8eaf-8a3d9158e81e
-# ╠═a10caca1-d50b-484b-8c06-1f6ed63adb67
+# ╟─51ad905b-efad-4461-8eaf-8a3d9158e81e
+# ╟─a10caca1-d50b-484b-8c06-1f6ed63adb67
 # ╠═f9eb071b-af97-4548-b8c7-d1eec433c234
 # ╠═60469e5b-1c20-4c45-8104-ee36785244e7
 # ╠═aeefffd7-b375-4b6b-8541-7ea459bdc15b
@@ -1811,7 +1811,7 @@ version = "1.4.1+0"
 # ╟─4fdfe647-953a-4eff-9942-279733465d78
 # ╠═1611efd1-8280-4e19-a2a8-5ec9e00c65e1
 # ╠═7967ab60-34d6-4094-b758-7dc6200dca2f
-# ╠═551e7f0e-33f3-4c19-b657-371f8d36f27c
-# ╠═4e3d5114-1d97-4a11-ab83-753f6bc69fed
+# ╟─551e7f0e-33f3-4c19-b657-371f8d36f27c
+# ╟─4e3d5114-1d97-4a11-ab83-753f6bc69fed
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
