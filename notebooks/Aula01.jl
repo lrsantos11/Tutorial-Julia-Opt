@@ -193,7 +193,7 @@ md"""
 
 # ╔═╡ 103ee9a6-cd67-49e1-b0cc-453a19316bed
 md"""
-### Acesso à uma matriz por linhas e por colunas
+## Exemplo: Acesso à uma matriz por linhas e por colunas
 
 * Tipo de ordenação: [*Row-major* ou *Column-major order*](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
 
@@ -214,11 +214,6 @@ md"""
 - Visualmente temos
 """
 
-# ╔═╡ 30debc37-e24e-4fcc-9f16-fb0ebd050f48
-html"""
-<p><a href="https://commons.wikimedia.org/wiki/File:Row_and_column_major_order.svg#/media/Ficheiro:Row_and_column_major_order.svg"><img src="https://upload.wikimedia.org/wikipedia/commons/4/4d/Row_and_column_major_order.svg" alt="Row and column major order.svg" height="683" width="512"></p>
-"""
-
 # ╔═╡ 45521824-8213-4097-9c6f-40acacc5b7a4
 md"""
 
@@ -235,6 +230,13 @@ md"""
      - Julia
           
 * Para medir tempo em Julia vamos usar o pacote [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl)"""
+
+# ╔═╡ 13e03ba4-b696-4f2b-aee2-24b0db04f886
+row_major = 
+"https://upload.wikimedia.org/wikipedia/commons/4/4d/Row_and_column_major_order.svg";
+
+# ╔═╡ 30debc37-e24e-4fcc-9f16-fb0ebd050f48
+Resource(row_major, :width => 400)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1350,10 +1352,11 @@ version = "1.4.1+1"
 # ╟─32a686b3-16bc-43fa-82c6-c8696a8b8425
 # ╠═65c599de-0c1f-4b05-9d2a-f13557b205d9
 # ╟─95306a4f-7611-45fc-aa4e-a554be583de3
-# ╟─103ee9a6-cd67-49e1-b0cc-453a19316bed
+# ╠═103ee9a6-cd67-49e1-b0cc-453a19316bed
 # ╟─1632af6a-ae19-4dca-bca8-4953a43528e9
-# ╟─30debc37-e24e-4fcc-9f16-fb0ebd050f48
+# ╠═30debc37-e24e-4fcc-9f16-fb0ebd050f48
 # ╟─45521824-8213-4097-9c6f-40acacc5b7a4
 # ╟─53403e52-0112-4ba6-9293-725603c00793
+# ╟─13e03ba4-b696-4f2b-aee2-24b0db04f886
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
