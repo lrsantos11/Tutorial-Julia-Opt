@@ -4,6 +4,9 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ b08d6f28-9c29-4d73-957f-a2385514b0c1
+using PlutoUI
+
 # ╔═╡ 551a6584-9534-4d04-a4f0-e07f4ef78233
 begin 
 	using Plots
@@ -74,15 +77,15 @@ md"""
 
 # ╔═╡ cbde2f19-feaf-4be2-93c9-7f49b2c5855a
 begin
-    function plot_factivel()
+    function plot_feasible()
         contour(range(-0.5, 10, length=100), range(-0.5, 5, length=100), 
             (x,y)->-12x-20y, 
             levels=10,
             frame_style=:origin)
         plot!([0;  0 ; 8; 6  ; 0 ],
-          [ 4; 0 ; 0; 1.5 ; 4], c=:blue, lw=2, lab="Conjunto factível",series=:path)
+          [ 4; 0 ; 0; 1.5 ; 4], c=:blue, lw=2, lab="Conjunto viável",series=:path)
     end
-    plot_factivel()
+    plot_feasible()
 end
 
 # ╔═╡ 9852ab34-97cf-4b26-847f-4b5db935e79d
@@ -204,11 +207,11 @@ md"""
 
 # ╔═╡ fc9d90f8-ef14-4a3f-960b-2a7fb12fd4d4
 md"""
-![alt text](img/n_queens4.png \"Solução para 4-rainhas\")"""
+$(Resource("https://upload.wikimedia.org/wikipedia/commons/1/1f/Eight-queens-animation.gif"))"""
 
 # ╔═╡ e57f571b-a5e4-4831-ac9f-3030a511759b
 begin
-    N = 16
+    N = 4
     Nrainhas = Model(HiGHS.Optimizer)
     
     #Definindo as variáveis
@@ -221,7 +224,7 @@ end
 
 # ╔═╡ 0ccf0c79-c462-4940-9137-c78f0865af40
 # Restrições em relação a soma das colunas
-@constraint(Nrainhas,[sum(x[:,j]) for j=1:N] .== 1)
+@constraint(Nrainhas,[sum(queens[:,j]) for j=1:N] .== 1)
 
 # ╔═╡ a580e01f-468f-4e48-b130-68368b1213bf
 queens
@@ -249,18 +252,27 @@ optimize!(Nrainhas)
 # ╔═╡ e92e4f60-8a48-40d5-886b-eeddd8ceaea6
 Int.(value.(queens))
 
-# ╔═╡ e42da8c2-77a1-4375-94b4-7dbe90640c1a
-md"""
-![alt text](img/n_queens.png \"Solução para 8-rainhas\")"""
-
 # ╔═╡ 82e741d2-7238-43ab-893b-259e328035ba
 md"""
-### Exemplo 3 - Voltando pra Rosenbrock
+### Exemplo 3 - Função de Rosenbrock (Bananinha)
 
 
 * Vamos usar `JuMP` e `Ipopt`  para minimizar a função (não-linear) de Rosenbrock
-$$f(x) = (1-x_1)^2 + 100(x_2-x_1^2)^2$$
+$$f(x) = (1-x_1)^2 + 4(x_2-x_1^2)^2$$
 """
+
+# ╔═╡ 4840eab7-f606-4781-83ca-90a0381f9585
+	f_rosen(x,y) = (1 -x)^2 + 4*(y - x^2)^2
+
+# ╔═╡ 51e64021-1527-4082-887f-def21cd80504
+begin
+	w_1 = range(-2.0, 2.0, length=1000)
+	w_2 = range(-2.0, 2.0, length=1000)
+	z =  @. f_rosen(w_1,w_2)
+
+	contour(w_1,w_2, f_rosen)
+
+end
 
 # ╔═╡ ea0971d5-5195-4f62-a08a-bf039fa7b5de
 begin
@@ -268,7 +280,7 @@ begin
     
     @variable(rosen,w[1:2])
     
-    @NLobjective(rosen,Min,(1-w[1])^2 + 100(w[2]-w[1]^2)^2)
+    @NLobjective(rosen,Min,(1-w[1])^2 + 4(w[2]-w[1]^2)^2)
     
     print(rosen)
     
@@ -290,12 +302,14 @@ Ipopt = "b6b21f68-93f8-5de0-b562-5493be1d77c9"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 HiGHS = "~1.8.0"
 Ipopt = "~1.6.0"
 JuMP = "~1.18.1"
 Plots = "~1.39.0"
+PlutoUI = "~0.7.55"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -304,13 +318,19 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "ffa2aca587129fea645e6dbdab27a23da76ba6c2"
+project_hash = "f0b4aa5354096d468fd3a7fc6d99de21738fd415"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "6252039f98492252f9e47c312c8ffda0e3b9e78d"
 uuid = "ae81ac8f-d209-56e5-92de-9978fef736f9"
 version = "0.1.3+0"
+
+[[deps.AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "c278dfab760520b8bb7e9511b968bf4ba38b7acc"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.2.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -607,6 +627,24 @@ git-tree-sha1 = "ca0f6bf568b4bfc807e7537f081c81e35ceca114"
 uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
 version = "2.10.0+0"
 
+[[deps.Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "179267cfa5e712760cd43dcae385d7ea90cc25a4"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.5"
+
+[[deps.HypertextLiteral]]
+deps = ["Tricks"]
+git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.5"
+
+[[deps.IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "8b72179abc660bfab5e28472e019392b97d0985c"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.4"
+
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -812,6 +850,11 @@ git-tree-sha1 = "1fd0a97409e418b78c53fac671cf4622efdf0f21"
 uuid = "d00139f3-1899-568f-a2f0-47f597d42d70"
 version = "5.1.2+0"
 
+[[deps.MIMEs]]
+git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
+uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
+version = "0.1.4"
+
 [[deps.MUMPS_seq_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "METIS_jll", "libblastrampoline_jll"]
 git-tree-sha1 = "78fedbcf96bd35682fed2a9dda35ea871cfb734c"
@@ -989,6 +1032,12 @@ version = "1.39.0"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[[deps.PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
+git-tree-sha1 = "68723afdb616445c6caaef6255067a8339f91325"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.55"
+
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "03b4c25b43cb84cee5c90aa9b5ea0a78fd848d2f"
@@ -1162,6 +1211,11 @@ weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
     TestExt = ["Test", "Random"]
+
+[[deps.Tricks]]
+git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.8"
 
 [[deps.URIs]]
 git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
@@ -1498,6 +1552,7 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
+# ╟─b08d6f28-9c29-4d73-957f-a2385514b0c1
 # ╟─cbb94315-4bbe-44cf-8de1-1250d4d3bbe9
 # ╠═af01283f-8afd-4f1f-8cdb-c12f34d24c0f
 # ╠═319606b0-06be-49b3-9804-09588df84b40
@@ -1527,8 +1582,9 @@ version = "1.4.1+1"
 # ╠═c13bcad6-1402-45ff-806b-2e7b640ffaff
 # ╠═e27c7dbf-00a1-4d14-bc2a-60378c066eac
 # ╠═e92e4f60-8a48-40d5-886b-eeddd8ceaea6
-# ╟─e42da8c2-77a1-4375-94b4-7dbe90640c1a
 # ╟─82e741d2-7238-43ab-893b-259e328035ba
+# ╠═4840eab7-f606-4781-83ca-90a0381f9585
+# ╠═51e64021-1527-4082-887f-def21cd80504
 # ╠═ea0971d5-5195-4f62-a08a-bf039fa7b5de
 # ╠═cf1be8dc-75cb-48eb-a81b-9591da7c79e7
 # ╠═ecd525c8-6b0d-4e9c-9c97-bf1be1b8030a
