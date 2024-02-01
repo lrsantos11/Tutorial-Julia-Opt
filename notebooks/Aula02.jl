@@ -211,20 +211,22 @@ $(Resource("https://upload.wikimedia.org/wikipedia/commons/1/1f/Eight-queens-ani
 
 # ╔═╡ e57f571b-a5e4-4831-ac9f-3030a511759b
 begin
-    N = 4
+    N = 16
     Nrainhas = Model(HiGHS.Optimizer)
     
     #Definindo as variáveis
     @variable(Nrainhas,queens[i=1:N,j=1:N],Bin)
 end
 
+# ╔═╡ 0ccf0c79-c462-4940-9137-c78f0865af40
+# Restrições em relação a soma das colunas
+for j in 1:N
+	@constraint(Nrainhas,sum(queens[:,j]) .== 1)
+end
+
 # ╔═╡ f42a5272-14af-4ddb-84fd-5ebef7d39b4b
 # Restrições em relação a soma das linhas
 @constraint(Nrainhas,[sum(queens[i,:]) for i=1:N] .== 1)
-
-# ╔═╡ 0ccf0c79-c462-4940-9137-c78f0865af40
-# Restrições em relação a soma das colunas
-@constraint(Nrainhas,[sum(queens[:,j]) for j=1:N] .== 1)
 
 # ╔═╡ a580e01f-468f-4e48-b130-68368b1213bf
 queens
@@ -1572,8 +1574,8 @@ version = "1.4.1+1"
 # ╟─f81b8773-97d6-4d4c-a193-180674ee0095
 # ╟─fc9d90f8-ef14-4a3f-960b-2a7fb12fd4d4
 # ╠═e57f571b-a5e4-4831-ac9f-3030a511759b
-# ╠═f42a5272-14af-4ddb-84fd-5ebef7d39b4b
 # ╠═0ccf0c79-c462-4940-9137-c78f0865af40
+# ╠═f42a5272-14af-4ddb-84fd-5ebef7d39b4b
 # ╠═a580e01f-468f-4e48-b130-68368b1213bf
 # ╠═3025b770-41f0-45de-b95e-6ffbbb6716c6
 # ╠═f8e82221-49d8-4923-bff3-d5e906069e39
