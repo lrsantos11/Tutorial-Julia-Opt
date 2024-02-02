@@ -16,14 +16,11 @@ using ADNLPModels
 # ╔═╡ fad4f8d2-3bc0-4689-adca-0eb4cc61e2a2
 using JuMP, NLPModelsJuMP
 
-# ╔═╡ db0af882-451d-49ed-b250-846cc537ed3e
-begin
-    using BenchmarkProfiles
-    gr()
-    T = 10 * rand(25,3);
-    plt = performance_profile(T, ["Solver 1", "Solver 2", "Solver 3"], title="Celebrity Deathmatch")
+# ╔═╡ e509e504-984f-4048-8e6c-4c86f525a66a
+using CUTEst
 
-end
+# ╔═╡ dac805e5-dea4-4102-aa71-0a1168e11d4c
+using BenchmarkProfiles
 
 # ╔═╡ 939da41f-839a-4ad8-b226-4b3d4fe78f0a
 md"""
@@ -63,24 +60,19 @@ md"""
 # ╔═╡ 1412a7d1-6628-47bb-9bcd-4bc87b4a9579
 md"""
 ### Interfaces do NLPModels
-#### [Interface Internas](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/#Internal-Interfaces)
 
- - `ADNLPModel`: Usa
-   [`ForwardDiff`](https://github.com/JuliaDiff/ForwardDiff.jl) para computar derivadas. Simples mas não tão eficiente
-   for larger problems.
- - `SlackModel`: Cria problemas com restrições de igualdade e restrições de caixa a partir de um NLPModel existente.
- - `LBFGSModel`: Cria modelo usando a aproximação LBFGS para a Hessiana a partir de um NLPModel existente.
- - `ADNLSModel`: Similar a  `ADNLPModel`, mas para qudarados mínimos não-lineares (nonlinear least squares)
+- [NLPModelsModifiers.jl](https://github.com/JuliaSmoothOptimizers/NLPModelsModifiers.jl):  Models that modify existing models.   For instance, creating slack variables, or moving constraints into the objective functions, or using Quasi-Newton LBFSG approximations to the Hessian.
+- [ADNLPModels.jl](https://github.com/JuliaSmoothOptimizers/ADNLPModels.jl): Models with automatic differentiation.
+- [CUTEst.jl](https://github.com/JuliaSmoothOptimizers/CUTEst.jl):  For problems from [CUTEst](https://github.com/ralna/CUTEst/wiki).
+- [AmplNLReader.jl](https://github.com/JuliaSmoothOptimizers/AmplNLReader.jl):  For problems modeled using [AMPL](https://ampl.com)
+- [NLPModelsJuMP.jl](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl):  For problems modeled using [JuMP.jl](https://github.com/jump-dev/JuMP.jl).
+- [QuadraticModels.jl](https://github.com/JuliaSmoothOptimizers/QuadraticModels.jl):  For problems with quadratic and linear structure.
+- [LLSModels.jl](https://github.com/JuliaSmoothOptimizers/LLSModels.jl):  Creates a linear least squares model.
+- [PDENLPModels.jl](https://github.com/JuliaSmoothOptimizers/PDENLPModels.jl):   For PDE-constrained problems.
+- [BlockNLPModels.jl](https://github.com/exanauts/BlockNLPModels.jl): For modeling block structured nonlinear optimization problems.
 
-#### [Interface Externas](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/#External-Interfaces)
-
- - `AmplModel`: Definida em 
-   [`AmplNLReader.jl`](https://github.com/JuliaSmoothOptimizers/AmplNLReader.jl)
-   para problemas modelados com [AMPL](https://ampl.com)
- - `CUTEstModel`: Definida em 
-   [`CUTEst.jl`](https://github.com/JuliaSmoothOptimizers/CUTEst.jl) para problemas da biblioteca [CUTEst](https://github.com/ralna/CUTEst/wiki).
- - [`MathOptNLPModel`](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl) e [`MathOptNLSModel`](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl)
-   para problemas modelados usando [JuMP.jl](https://github.com/jump-dev/JuMP.jl) e [MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl)."""
+> Veja mais na [documentação de NLPModels](https://jso.dev/NLPModels.jl/stable/models/)
+"""
 
 # ╔═╡ fddd97dd-c3f2-4c15-b1a1-9d94e9f026d7
 md"""
@@ -102,14 +94,14 @@ $$f(x) = (1-x_1)^2 + 100(x_2-x_1^2)^2$$
 para testar o pacote `NLPModels`."""
 
 # ╔═╡ cc06c78f-64e9-45cd-9f37-c47a121c4819
-f(x) = (1-x[1])^2 + 100(x[2] - x[1]^2)^2
+f_rosen(x) = (1-x[1])^2 + 100(x[2] - x[1]^2)^2
 
 # ╔═╡ 0b82f325-2366-484c-97ac-3c06aa42299c
 md"""
 com ponto inicial $(-1.2,1.0)$."""
 
 # ╔═╡ d7332e5a-6cae-4730-ad63-673aac4c3fa0
-x0 = [-1.2,1.0]
+x0_rosen = [-1.2,1.0]
 
 # ╔═╡ 08563857-0435-48c2-9140-88ef0ecd7fe8
 md"""
@@ -135,7 +127,7 @@ s. a  lcon ≤ c(x) ≤ ucon
 ```"""
 
 # ╔═╡ cbbd7ef8-7edc-4437-a6a9-578970bbf2df
- adnlp = ADNLPModel(f,x0)
+ adnlp = ADNLPModel(f_rosen,x0_rosen)
 
 # ╔═╡ de0c5fc2-d51f-4667-9aaa-11817141236b
 md"""
@@ -148,20 +140,37 @@ md"""
 - ``\nabla f(x), \nabla^2 f(x), J_c(x) = \nabla c(x)^T``; 
 - ``\nabla^2 f(x) + \sum_{i=1}^m \lambda_i \nabla^2 c_i(x)``,
   Hessiana da função Lagrangeana no ponto $(x,\lambda)$.
+
 > Para todas as funções disponibilizadas pelo pacote veja o [Guia de Referências](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/api/#Reference-guide) do API
 
-* Vejam alguas que podemos usar"""
+* Vejam algumas que podemos usar
+"""
 
-# ╔═╡ 5e50fcf7-41c3-4eea-88c3-5c364a56a633
-begin
-    @show obj(adnlp, adnlp.meta.x0)
-    @show grad(adnlp, adnlp.meta.x0)
-    @show hess(adnlp, adnlp.meta.x0)
-    @show objgrad(adnlp, adnlp.meta.x0)
-    @show hprod(adnlp, adnlp.meta.x0, ones(2))
-    @show H = hess_op(adnlp, adnlp.meta.x0)
-    H * ones(2)
-end
+# ╔═╡ 2338b5b8-63c2-4980-a510-1ba7689f3da5
+@show obj(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 1d918e2e-0130-40ca-817c-ff617abcd096
+@show grad(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 47a8a32d-d6a1-4cf5-baf4-3530f819b701
+@show hess(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 7edfe366-6ffb-4f60-9e5e-d0bd769e2cf3
+@show objgrad(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 9a10288f-f902-432d-aa54-8a8f9d4169a3
+@show hprod(adnlp, adnlp.meta.x0, ones(2));
+
+# ╔═╡ 707140b3-a3f4-495f-8a92-6138046b5694
+md"""
+- Matrix Hessiana (e Jacobiana, quando for o caso) acessível como Operador Linear por meio de `mat-vec`.
+"""
+
+# ╔═╡ 1cf5fb46-951e-4b1d-aed6-0add01d2f30c
+H = hess_op(adnlp, adnlp.meta.x0)
+
+# ╔═╡ e3b1ebe4-8ec8-436b-80ed-ed8dd7b5baa6
+H * ones(2)
 
 # ╔═╡ 66707443-e267-4859-985a-ffd5b34e0ef8
 print(adnlp.counters)
@@ -197,7 +206,7 @@ begin
     @NLobjective(rosen,Min,(1-x[1])^2 + 100(x[2]-x[1]^2)^2)
     print(rosen)
     
-    jpnlp = MathOptNLPModel(rosen)
+    jpnlp_rosen = MathOptNLPModel(rosen)
 
 end
 
@@ -213,14 +222,21 @@ md"""
 * A interface com Julia que estamos usando permite acessar os problemas da CUTEst + outras bibliotecas (manualmente) que estão descritas no formato SIF.
 """
 
+# ╔═╡ b50e599d-9def-4e64-bee5-7e45c94d7d8b
+begin
+	cutenlp_rosen = CUTEstModel("ROSENBR")
+end
+
+# ╔═╡ 113f535d-579f-43e5-880a-d5a4ba12acef
+md"""
+- Para selecionar problemas da biblioteca CUTEst pode-se usar o `CUTEst.select`
+"""
+
 # ╔═╡ 2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
 CUTEst.select()# Sempre preciso finalizar o modelo
 
-
-
-
 # ╔═╡ d17bc84d-611d-4e7a-ae14-06584448c3ba
-problmes2D = CUTEst.select(max_var=2,contype=:unc)
+problmes2D = CUTEst.select(max_var=2, contype=:unc)
 
 # ╔═╡ 0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
 md"""
@@ -232,10 +248,10 @@ md"""
     * usaremos fatoração de Cholesky pra resolver o sistema linear de Newton
     * adicionaremos uma busca linear inexata com [Armijo com backtracking](https://en.wikipedia.org/wiki/Backtracking_line_search) para garantir descenso suficiente da direção de Newton $d_k$:
     
-    """
+"""
 
 # ╔═╡ 36045b7a-9714-48d0-8594-da74204d9df0
-function newton(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6)
+function newton(nlp::AbstractNLPModel; itmax = 10_000, ε = 1e-6)
 	k = 0
     xₖ = nlp.meta.x0
     gradₖ = grad(nlp,xₖ)
@@ -250,11 +266,42 @@ function newton(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6)
     return xₖ, k
 end
 
+# ╔═╡ 21f54f3c-697f-48af-a6d5-658e41512b1c
+begin
+    @show xₖ_rosen_newton_adnlp, k__rosen_newton_adnlp = newton(adnlp)
+    print(adnlp.counters)
+end
+
+# ╔═╡ febfa521-4cc0-401a-9505-f1e4ee22d468
+begin
+    jpnlp_rosen.meta.x0
+    @show xₖ_rosen_newton_jpnlp, k__rosen_newton_jpnlp = newton(jpnlp_rosen)
+    print(jpnlp_rosen.counters)
+
+end
+
+# ╔═╡ c248b331-d2cd-4270-b24e-272ee8cbebe2
+@show xₖ_rosen_newton_cutenlp, k_rosen_newton_cutenlp = newton(cutenlp_rosen)
+
+# ╔═╡ e4d8a64c-8c46-453e-b540-25942c18adf7
+print(cutenlp_rosen.counters)
+
 # ╔═╡ 3c0de4c1-275d-4491-894d-a08fcc132c84
 md"""
 
 > **Armijo com backtracking.**
 >   Enquanto  $f(x_k + \alpha_kd_k) > f(x_k) + \alpha_k\rho\nabla f(x_k)^Td_k $ escolha novo  $\alpha_k \in [0.1\alpha_k,0.9\alpha_k]$, para $\rho > 0$"""
+
+# ╔═╡ 648f21a8-0862-41ac-ba21-4f84f86ded87
+function armijo_bt(fα, xₖ, gradₖ, dₖ, ρ)
+	αₖ = 1.0
+	while fα > fₖ + ρ * αₖ * dot(gradₖ,dₖ) 
+            αₖ *= 0.5
+            xtrial .= xₖ + αₖ*dₖ 
+            fα = obj(nlp,xtrial)
+        end
+	return xtrial, fα
+end
 
 # ╔═╡ 4949b3f7-00b1-4a77-9508-6771559fa9ee
 
@@ -267,14 +314,9 @@ function newton_bt(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6,ρ::Float64 =
         Hx = hess(nlp,xₖ)
         F = cholesky(Symmetric(Hx,:L))
         dₖ = - (F \ gradₖ)
-        αₖ = 1.0
         xtrial = xₖ + αₖ*dₖ 
         fα = obj(nlp,xtrial)
-        while fα > fₖ + ρ * αₖ * dot(gradₖ,dₖ) 
-            αₖ *= 0.5
-            xtrial = xₖ + αₖ*dₖ 
-            fα = obj(nlp,xtrial)
-        end
+		xtrial, fα  = armijo_bt(fα, xₖ, gradₖ, dₖ, ρ)
         xₖ = xtrial
         fₖ = obj(nlp,xₖ)
         gradₖ = grad(nlp,xₖ)
@@ -284,64 +326,39 @@ function newton_bt(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6,ρ::Float64 =
 end
 
 # ╔═╡ 25d0693f-5c0b-4594-8a6b-b66295175be6
-newton_bt(cutenlp)
+newton_bt(cutenlp_rosen)
 
 # ╔═╡ 3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
 md"""
 ### Um exemplo que Newton BT não funciona"""
 
+# ╔═╡ 787da96c-ea60-4d1b-8f7c-1175a68ed42c
+nlp_himmel = CUTEstModel("HIMMELBB")
+
 # ╔═╡ 6ddcee41-8e23-44ab-827e-7c34e1d7e49d
-newton_bt(nlp)
+newton_bt(nlp_himmel)
 
 # ╔═╡ f48a36a2-04b3-4c7a-86ed-8c4d80664199
-finalize(nlp)
+finalize(nlp_himmel)
+
+# ╔═╡ 20e8b10d-9e2c-4685-a0e3-731b540fa6b8
+nlp_box = CUTEstModel("BOX")
 
 # ╔═╡ d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
-newton_bt(nlp)
+newton_bt(nlp_box)
 
 # ╔═╡ 3bab6ea9-ac3f-43d7-968f-e3d78871984f
-newton(nlp)
+newton(nlp_box)
 
 # ╔═╡ 5719e8c4-c321-4372-941c-b619887198f5
 md"""
-## BenchmarkOrofiles
-O pacote `BenchmarkProfiles` fornece uma fácil maneira de construir os Performance Profiles de Dolan e Moré. """
+## BenchmarkProfiles.jl
+- O pacote `BenchmarkProfiles.jl` fornece uma fácil maneira de construir os Performance Profiles de Dolan e Moré. """
 
-# ╔═╡ 21f54f3c-697f-48af-a6d5-658e41512b1c
+# ╔═╡ db0af882-451d-49ed-b250-846cc537ed3e
 begin
-    @show xₖ, k = newton(adnlp)
-    print(adnlp.counters)
-end
-
-# ╔═╡ 7beb5c0c-a37e-48e0-84af-005692720beb
-begin
-    using CUTEst
-    
-    cutenlp = CUTEstModel("ROSENBR")
-    
-
-end
-
-# ╔═╡ febfa521-4cc0-401a-9505-f1e4ee22d468
-begin
-    jpnlp.meta.x0
-    @show xₖ, k = newton(jpnlp)
-    print(jpnlp.counters)
-
-end
-
-# ╔═╡ 787da96c-ea60-4d1b-8f7c-1175a68ed42c
-nlp = CUTEstModel("HIMMELBB")
-
-# ╔═╡ 20e8b10d-9e2c-4685-a0e3-731b540fa6b8
-nlp = CUTEstModel("BOX")
-
-# ╔═╡ d4ae1ba5-3cb7-4438-90a2-0edb3fa8e161
-begin
-    cutenlp = CUTEstModel("ROSENBR")
-    @show xₖ, k = newton(cutenlp)
-    print(cutenlp.counters)
-
+    T = 10 * rand(25,3);
+    plt = performance_profile(PlotsBackend(), T, ["Solver 1", "Solver 2", "Solver 3"], title="Celebrity Deathmatch")
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1708,8 +1725,15 @@ version = "1.4.1+1"
 # ╟─08563857-0435-48c2-9140-88ef0ecd7fe8
 # ╠═6eea5a33-994f-49cc-9ec9-b81637e09f7b
 # ╠═cbbd7ef8-7edc-4437-a6a9-578970bbf2df
-# ╠═de0c5fc2-d51f-4667-9aaa-11817141236b
-# ╠═5e50fcf7-41c3-4eea-88c3-5c364a56a633
+# ╟─de0c5fc2-d51f-4667-9aaa-11817141236b
+# ╠═2338b5b8-63c2-4980-a510-1ba7689f3da5
+# ╠═1d918e2e-0130-40ca-817c-ff617abcd096
+# ╠═47a8a32d-d6a1-4cf5-baf4-3530f819b701
+# ╠═7edfe366-6ffb-4f60-9e5e-d0bd769e2cf3
+# ╠═9a10288f-f902-432d-aa54-8a8f9d4169a3
+# ╟─707140b3-a3f4-495f-8a92-6138046b5694
+# ╠═1cf5fb46-951e-4b1d-aed6-0add01d2f30c
+# ╠═e3b1ebe4-8ec8-436b-80ed-ed8dd7b5baa6
 # ╠═66707443-e267-4859-985a-ffd5b34e0ef8
 # ╟─7a6ffe6b-3bec-48ea-8b26-66f00830bb90
 # ╠═822fb793-2193-4716-b73f-86fcd133eb46
@@ -1720,15 +1744,19 @@ version = "1.4.1+1"
 # ╠═a2b62afa-1a37-4a8e-9afa-4976e4b8450f
 # ╟─a4ed64db-d5da-4254-b113-63e7d65c1e36
 # ╟─9d0eff7c-ce65-4046-883c-6edf494b3fd9
-# ╠═7beb5c0c-a37e-48e0-84af-005692720beb
+# ╠═e509e504-984f-4048-8e6c-4c86f525a66a
+# ╠═b50e599d-9def-4e64-bee5-7e45c94d7d8b
+# ╟─113f535d-579f-43e5-880a-d5a4ba12acef
 # ╠═2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
 # ╠═d17bc84d-611d-4e7a-ae14-06584448c3ba
 # ╟─0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
 # ╠═36045b7a-9714-48d0-8594-da74204d9df0
 # ╠═21f54f3c-697f-48af-a6d5-658e41512b1c
 # ╠═febfa521-4cc0-401a-9505-f1e4ee22d468
-# ╠═d4ae1ba5-3cb7-4438-90a2-0edb3fa8e161
+# ╠═c248b331-d2cd-4270-b24e-272ee8cbebe2
+# ╠═e4d8a64c-8c46-453e-b540-25942c18adf7
 # ╟─3c0de4c1-275d-4491-894d-a08fcc132c84
+# ╠═648f21a8-0862-41ac-ba21-4f84f86ded87
 # ╠═4949b3f7-00b1-4a77-9508-6771559fa9ee
 # ╠═25d0693f-5c0b-4594-8a6b-b66295175be6
 # ╟─3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
@@ -1739,6 +1767,7 @@ version = "1.4.1+1"
 # ╠═d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
 # ╠═3bab6ea9-ac3f-43d7-968f-e3d78871984f
 # ╟─5719e8c4-c321-4372-941c-b619887198f5
+# ╠═dac805e5-dea4-4102-aa71-0a1168e11d4c
 # ╠═db0af882-451d-49ed-b250-846cc537ed3e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
