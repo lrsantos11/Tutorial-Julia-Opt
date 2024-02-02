@@ -4,16 +4,31 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ f8c79e87-52ba-40a5-ae11-d40934161fe9
-using LinearAlgebra, Plots, Random
+# ╔═╡ 13aa94c4-687a-4d5c-ab04-2fbe9045ee0f
+using Plots, LinearAlgebra
 
-# ╔═╡ 67404a91-fe04-4b6f-ab9a-c6400b0d0766
-using ForwardDiff
+# ╔═╡ 5a80bca7-d433-4e4f-a634-2e07bbda6afa
+using NLPModels
 
-# ╔═╡ c1c88e38-ed61-4972-ad34-6ec8e12ccb2c
+# ╔═╡ 6eea5a33-994f-49cc-9ec9-b81637e09f7b
+using ADNLPModels
+
+# ╔═╡ fad4f8d2-3bc0-4689-adca-0eb4cc61e2a2
+using JuMP, NLPModelsJuMP
+
+# ╔═╡ db0af882-451d-49ed-b250-846cc537ed3e
+begin
+    using BenchmarkProfiles
+    gr()
+    T = 10 * rand(25,3);
+    plt = performance_profile(T, ["Solver 1", "Solver 2", "Solver 3"], title="Celebrity Deathmatch")
+
+end
+
+# ╔═╡ 939da41f-839a-4ad8-b226-4b3d4fe78f0a
 md"""
-# Tutorial de  Julia para Otimização
-## Aula 03 - Algoritmos de Otimização em Julia
+### Tutorial de  Julia para Otimização
+## Aula 04 - NLPModels e Comparação de Algortimos
 
 ### Ministrante
 - Luiz-Rafael Santos ([LABMAC/UFSC/Blumenau](http://labmac.mat.blumenau.ufsc.br))
@@ -21,747 +36,333 @@ md"""
     - Repositório do curso no [Github](https://github.com/lrsantos11/Tutorial-Julia-Opt)
 """
 
-# ╔═╡ 7bc47d0d-ae5a-46a8-8259-d5ff97688ef5
+# ╔═╡ 225b92e8-3bc1-4b8a-8bae-7b01de881b49
 md"""
-# Introdução à otimização
-O problema geral de otimização (P) pode ser dado por
+### Pacotes para contrução e comparação de algoritmos
 
-```math
-\begin{align}
-\min f(x)\tag{P}\\ 
-\text{s.a. } \ell \leq c(x) \leq u
-\end{align}
-```
-em que $f:D_{f}\subset \mathbb{R}^n \to \mathbb{R}$ e $c:D_{c}\subset \mathbb{R}^n\to \mathbb{R}^m$.
 
-* ``f`` é *chamada função objetivo*
 
-* Como $c(x) = (c_1(x),\ldots,c_m(x))$, então chamamos cada $c_i$ de *restrição*
 
-* O conjunto $\Omega := \{x\in \mathbb{R}^n\mid \ell \leq c(x) \leq u$\} é *chamado conjunto viável* ou *factível*. 
-  - Caso $\Omega = \mathbb{R}^n$ dizemos que (P) *irrestrito*
-  - Caso $\Omega = \emptyset$, dizemos que (P) é *inviável* ou *infactível*
+* [JuliaSmoothOptimizers (JSO)](https://juliasmoothoptimizers.github.io/) coleção de pacotes em Julia para desenvolvimento, teste e *benchmark* de algoritmos de otimização (não-linear).
+    
+    * Modelagem
+        * [NLPModels](https://github.com/JuliaSmoothOptimizers/NLPModels.jl): API para representar problemas de otimização `min f(x) s.t. l <= c(x) <= u`
+    * Benchmark
+        * [BenchmarkProfiles](https://github.com/JuliaSmoothOptimizers/BenchmarkProfiles.jl)
+    * Respositórios de problemas
+        * [CUTEst.jl](https://github.com/JuliaSmoothOptimizers/CUTEst.jl): interface para o [CUTEst](http://ccpforge.cse.rl.ac.uk/gf/project/cutest/wiki), repositório de problemas de otimização para teste  comparação de algoritmos de otimização."""
 
-* Em particular, neste tutorial:
-    * ``f`` e cada $c_i$ serão $C^1(\mathbb{R})$ ($C^2(\mathbb{R}$) se necessário)
- 
+# ╔═╡ 98eb4816-8251-4a65-b68d-65d9e18cde8b
+
+
+# ╔═╡ 3b799acd-47a8-4411-8997-009ff541ac53
+md"""
+## NLPModels
 """
 
-# ╔═╡ 1cf30040-5e6c-4133-a671-5f696f3b0fdf
+# ╔═╡ 1412a7d1-6628-47bb-9bcd-4bc87b4a9579
 md"""
-### Minimizadores
+### Interfaces do NLPModels
+#### [Interface Internas](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/#Internal-Interfaces)
 
+ - `ADNLPModel`: Usa
+   [`ForwardDiff`](https://github.com/JuliaDiff/ForwardDiff.jl) para computar derivadas. Simples mas não tão eficiente
+   for larger problems.
+ - `SlackModel`: Cria problemas com restrições de igualdade e restrições de caixa a partir de um NLPModel existente.
+ - `LBFGSModel`: Cria modelo usando a aproximação LBFGS para a Hessiana a partir de um NLPModel existente.
+ - `ADNLSModel`: Similar a  `ADNLPModel`, mas para qudarados mínimos não-lineares (nonlinear least squares)
 
-* Diremos que $x^*\in\Omega$ é um *minimizador (global)* do problema $P$ se 
-$f(x^*) \leq f(x), \forall x\in \Omega$
+#### [Interface Externas](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/#External-Interfaces)
 
-* ``x^*\in\Omega`` é um *minimizador local* do problema $P$ se existe $\delta>0$ tal que
-$$f(x^*) \leq f(x), \forall x\in \Omega\cap \mathcal{B}_{\delta}(x^*)$$
-"""
+ - `AmplModel`: Definida em 
+   [`AmplNLReader.jl`](https://github.com/JuliaSmoothOptimizers/AmplNLReader.jl)
+   para problemas modelados com [AMPL](https://ampl.com)
+ - `CUTEstModel`: Definida em 
+   [`CUTEst.jl`](https://github.com/JuliaSmoothOptimizers/CUTEst.jl) para problemas da biblioteca [CUTEst](https://github.com/ralna/CUTEst/wiki).
+ - [`MathOptNLPModel`](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl) e [`MathOptNLSModel`](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl)
+   para problemas modelados usando [JuMP.jl](https://github.com/jump-dev/JuMP.jl) e [MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl)."""
 
-# ╔═╡ 21fc2aab-baac-4728-910a-8532c5b0b970
+# ╔═╡ fddd97dd-c3f2-4c15-b1a1-9d94e9f026d7
 md"""
-### Métodos Iterativos
+* NLPModels considera o problema de otimização dado da forma
 
-* Os métodos para resolver (P) são iterativos, isto é, vamos gerar computacionalmente uma sequência de pontos chamados *iterandos* $(x_k)_{k\geq 0}$ tal que a aproximação $x_{k+1}$ está bem definida quando
-``` math
-	f(x_{k+1}) < f(x_k),
-```
-se 
-$\nabla f(x_k)\neq 0$
-
-
-> **Definição. (Direção de descida)** Dizemos que $d\in \mathbb{R}^n$ é uma direção de descida a partir de $x$ se existe $\varepsilon>0$ tal que 
->```math
->	f(x + \alpha d) < f(x)
->```
-> para todo $\alpha \in (0,\varepsilon]$.
-
-* Direções que formam ângulo menor que 90 graus com $\nabla f(x)$ são de descida
-    * A direção $d = -\nabla f(x)$ é chamada *direção de máxima descida a partir de $x$*
-
-
-"""
-
-# ╔═╡ 8f68a47f-d9eb-41fc-9b7a-7be223f8be04
-md"""
-### Condição de otimalidade
-
-* Queremos gerar uma suquência tal que $x_k \to x^*$ ou tal que  $x_k \to \bar x$, em que $\bar x$ satisfaz alguma *condição de otimalidade*
-
-* Neste tutorial não discutiremos com profundidade a teoria de  *Condições de Otimalidade* mas usaremos alguns resultados como o teorema a seguir. 
-
-> **Teorema. (Condição necessária de 1a ordem)**
->     Seja $f:\mathbb{R}^n \to \mathbb{R}$ diferenciável no ponto $x^*$. Se $x^*$ é minimizador local de $f$, então
->    ```math 
->	\nabla f(x^*) = 0.
-> ```
-
-* Todo $x^*$ que cumpre a condição acima é chamado *ponto estacionário* ou *ponto crítico*
-
-* Vamos implementar métodos que convergem (em princípio) para pontos estacionários."""
-
-# ╔═╡ ea9dcff2-1baa-41ed-b34d-c9171dd50a00
-md"""
-### Algoritmo básico de otimização 
-
-* **Passo 0:** 
-    - escolha ponto inicial $x_0$; faça $k = 0$.
-
-* **Passo 1:** 
-     - se  $x_k$ está perto suficiente de um *ponto estacionário*, pare; caso contrário ($\nabla f(x_k)\neq 0$), vá ao Passo 2.
-
-* **Passo 2:**
-  - encontre direção $d_k$ de **descida** e tamanho de passo $\alpha_k$ tal que $f(x_k + \alpha_kd_k) < f(x_k)$
-
-* **Passo 3:** 
-  - compute	
-
-```math
-		x_{k+1} = x_k + \alpha_k d_k
-```
-* **Passo 4:** 
-    - faça $k = k+1$ e volte ao Passo 1
-     
-"""
-
-# ╔═╡ 56818fe8-c4ac-4b63-adc2-d1697d910755
-md"""
-# Dois métodos para minimizar quadráticas sem restrição
-
-* Vamos  resolver  o seguinte problema quadrático irrestrito (QP)
-```math
-\min_{x \in \mathbb{R}^{n}} f(x)=\frac{1}{2} x^{T} Q x - b^{T} x + c.
-```
-com $A\in\mathbb{R}^{n\times n}$ simétrica definida postiva.
-
-* Note que 
-```math
-\nabla f(x) = Qx-b 
-```
-
-
-
-
-
-* Vamos seguir de perto o texto
-> *Métodos computacionais de otimização* de J. Mário Martinez e Sandra A. Santos  (1995) [(PDF)](http://www.ime.unicamp.br/~martinez/mslivro.pdf).
-
-"""
-
-# ╔═╡ 9bfef0bc-a076-4027-83bf-15edcb79061b
-begin
-    # Estrutura a e funções para a quadratica
-    
-    struct Quadratica
-         Q::Matrix
-         b::Vector
-         c::Number
-         Quadratica(Q,b, c) = new(Q,b,c)
-    end
-    
-    obj(quad::Quadratica, x::Vector) = .5*dot(x,quad.Q*x) - dot(quad.b,x) + quad.c
-    grad(quad::Quadratica, x::Vector) = quad.Q*x - quad.b
-    
-
-end
-
-# ╔═╡ 7c054414-17e5-4038-9c22-6f1b3c0da40c
-md"""
-### Exemplo
-```math
-\min_{x \in \mathbb{R}^{n}} f(x)=\frac{1}{2} x^{T} Q x - b^{T} x + c
-```
-
-```math
-{Q}=\left[\begin{array}{ll}3 & 2 \\ 2 & 6\end{array}\right], {b}=\left[\begin{array}{r}2 \\ -8\end{array}\right], \quad {c}=0 \Rightarrow \mathbf{x}^*=\left[\begin{array}{r}2 \\ -2\end{array}\right]
-```
-"""
-
-# ╔═╡ fe40f901-76fb-4529-848c-587ae2eadf1f
-begin
-    Q = Float64[3 2; 2 6]
-    b = Float64[2, -8]
-    xsol = Q\b
-	quad = Quadratica(Q,b,0)
-    quad_R2(x,y) = obj(quad,[x,y])
-    x = range(-4,stop=6,length = 100)
-    y = range(-6,stop=4,length = 100)
-    z = quad_R2.(x,y)
-    plt2 = surface(x,y,quad_R2,leg=false)
-	plt = contour(x,y,quad_R2,leg=false,
-		framestyle=:zerolines,
-		levels=50,
-		aspect_ratio=:equal)
-    scatter!(plt,[xsol[1]],[xsol[2]])
-	plot(plt2, plt)
-end
-
-# ╔═╡ deb274d5-9b53-4e19-adbd-9b11d75eb94c
-md"""
-## Método de Máxima descida 
-### (ou gradientes descendentes ou Cauchy)
-"""
-
-# ╔═╡ 888e0a1c-adee-48a8-979a-a7ebee0c97af
-md"""
-* No modelo geral, faremos $d_k = -\nabla f(x_k) = b-Qx$ e vamos calcular $\alpha_k$ tal que 
-$$\alpha_k = \operatorname{arg}\min_{\alpha\geq 0} \varphi(\alpha) = f(x_k + \alpha d_k)$$
-
-* O valor de $\alpha_k$ é dado pela fórmula fechada (Por quê? - Exercício)
-$$\alpha_k = \frac{d_k^Td_k}{d_k^TQd_k} \text{ }$$
-
-* Direções de duas iterações consecutivas são ortogonais
-
-* **Critério de parada**: $\| d_k\|$ pequena o suficiente"""
-
-# ╔═╡ 3ce4a8a6-ccfc-4f94-8f35-b5a991a2b81d
-md"""
-### Jogo da pesca de tesouro
-
-* Clique [aqui](https://www.i-am.ai/apps/gradient-descent/index.html) para jogar
-
-
-> Após jogar algumas vezes você já percebeu que a maneira mais rápida de encontrar o ponto mais profundo no fundo do oceano é prestando atenção na inclinação encontrada em cada vez que você joga seu equipamento: o quão descendente o fundo está e em que direção estava inclindado. Embora você não possa **ver** o fundo e não tenha uma visão completa de como ele é, a inclinação te sugere por onde contiuar a busca.
-
-
-"""
-
-# ╔═╡ bc76c6d9-65e9-4bf0-bbc8-b07f5f1f88bd
-md"""
-## Algoritmo Gradiente Descendente
-
-
-*  Defina $x^0$, $d^0 =  b - Qx^0$ e $k=0$
-
-*  Enquanto $d^k \neq 0$ faça
-
-    * **Passo 1.** ``\alpha_{k} = \frac{({d}^{k})^Td^k}{({d}^{k})^TQ {d}^{k}}``
-    
-    * **Passo 2.** ``{x}^{k+1}={x}^{k}+\alpha_{k} {d}^{k}``
-    
-    * **Passo 3.** ``d_{k+1} = d_k - \alpha_kQd_k`` (Por quê?)
-    
-    * **Passo 4.** ``k = k+1``
-    
-"""
-
-# ╔═╡ 1df5a8ab-441f-411c-8b57-7edaef46f3f5
-begin
-    function iter_gradient(xₖ, dₖ, dotdₖ, quad)
-        """
-        Iteração basica de GD
-        Parâmetros:
-        xₖ: iteração atual
-        dₖ: direção atual
-        dotdₖ: prod interno dₖ
-        quad: quadratica de interesse
-        """
-        Qdₖ = quad.Q*dₖ
-        
-        αₖ = dotdₖ / dot(dₖ,Qdₖ)
-        
-        xₖ = xₖ +  αₖ*dₖ
-        
-        dₖ = dₖ - αₖ*Qdₖ
-        
-        dotdₖ = dot(dₖ,dₖ)
-    
-        return xₖ, dₖ, dotdₖ
-    end
-    
-    function gradient(quad::Quadratica,x₀::Vector;itmax::Int = 10, ε::Float64 = 1e-6)
-    	"""
-        Método de Gradientes descendentes
-        Parâmetros:
-        quad: Quadratica
-        x₀: ponto inicial
-        itmax: número max de iterçãoes de GD
-        ε: tol
-        """
-        k = 0
-        xₖ = x₀
-        dₖ = - grad(quad,xₖ)
-        dotdₖ = dot(dₖ,dₖ)
-        X =  xₖ
-        while k <= itmax && dotdₖ >= ε^2 # equivalente a norm(dₖ) <= ε
-            xₖ, dₖ, dotdₖ = iter_gradient(xₖ, dₖ, dotdₖ, quad)
-            X = hcat(X,xₖ)
-    		k += 1 # equivale a k = k + 1    
-        end
-        return X, k
-    end
-end
-
-# ╔═╡ dd7d4d7c-967b-40e4-a23c-bbc6191475ac
-begin
-    xGD, kGD = gradient(quad,[-2.,-2],itmax=30)
-    @show norm(b - quad.Q*xGD[:,end])
-    @show kGD
-    xGD[:,end]
-end
-
-# ╔═╡ 0ab2450d-ceec-4bb3-9142-3d1fa3e4616d
-md"""
-## Método dos Gradientes Conjugados"""
-
-# ╔═╡ 07d2aab4-b2f3-48e9-8a4f-836c4fa0c76c
-md"""
-## Eliminado o erro em $n$ passos
-
-O erro gerado por uma sequência $({x}^{k})_{k\geq 0}$ em relação a solução $x^{*}$ de (QP) é dado por
-$${e}^{k}={x}^{k}-{x}^{*}$$
-e o resíduo é dado por
-$${r}^{k}= - \nabla f(x^k) = {b}-{Q} {x}^{k}.$$
-
-Substituindo (6) in (7) obtemos
-$$\begin{aligned}
-{r}^{k}&={b}-{Q}\left({e}^{k}+{x}^{*}\right)=-{Q} {x}^{*}+{b}-{Q} {e}^{k}\\ &=-{Q} {e}^{k}
+$$\tag{P} \begin{aligned}
+\min \quad & f(x) \\
+& c_L \leq c(x) \leq c_U \\
+& \ell \leq x \leq u.
 \end{aligned}$$
-representando a relação entre o erro e o resíduo."""
 
-# ╔═╡ 9293ff33-f327-4618-b833-c07964022d8c
-md"""
-Dado $x^{0}$, queremos definir uma sequência de $n$ direções (vetores) LI ${d}^{0}, \ldots, {d}^{n-1}$ então 
-$$\mathbb{R}^n = \mathcal{D}=\operatorname{span}\left({d}^{0}, \ldots, {d}^{n-1}\right)$$
-tais que 
-$$\label{eq:xstra-x0}{x}^{*}={x}^{0}+\sum_{i=0}^{n-1} \alpha{i} {d}^{i}. \tag{1}$$
-Vamos computar, de fato, cada passo 
-$${x}^{k+1}={x}^{k}+\alpha_{k} {d}^{k}, \quad k=0, \ldots, n-1$$
-e como $\mathcal{D}$ é uma base de $\mathbb{R}^{n},$  vai existir a sequência de coeficientes
-$$\boldsymbol{\Phi}=\left(\alpha_{0}, \ldots, \alpha_{n-1}\right)$$
-que faz com que (1) esteja bem definido."""
-
-# ╔═╡ ea1869b1-226d-4496-9b68-87e186f33861
-md"""
-Pela definição de ${e}^{0}(:=x^{0}-x^{*} )$, temos
-$${e}^{0}=-\sum_{i=0}^{n-1} \alpha_{i} {d}^{i}.$$
-* Nosso objetivo é eliminar o erro ${e}^{{0}},$ encontrando um conjunto   $\Phi$ e tomando os passos $\alpha_{k}$ para isso. 
-*  Com isto  para obter ${x}^{*}$ apenas $n$ componentes de erro devem ser eliminadas
-* Isto vai significar que o algoritmo finalizará com $n$ iterações."""
-
-# ╔═╡ 788aa9ef-28b4-4edb-b36a-a0281b6b8f1e
-md"""
-##  Direções Ortogonais?
-* Se escolhermos ${d}^{0}, \ldots, {d}^{n-1}$ ortogonais (i.e., $({d}^{i})^T {d}^{j} = \delta_{ij})$, teríamos mais facilidade para encontrar os $\alpha_k$'s? Vejamos"""
-
-# ╔═╡ 5b3e39fc-78c6-4cb9-89ef-61012d117482
-md"""
-* Daí 
-    $$({d}^{k})^T{e}^{0}=-\sum_{i=0}^{n-1} \alpha_{i} ({d}^{k})^T{d}^{i}=- \alpha_{k}({d}^{k})^T {d}^{k}\implies \alpha_{k}=-\frac{({d}^{k})^T{e}^{0}}{({d}^{k})^T {d}^{k}},  k=0,\ldots,n-1$$
-
-    * Como
-$${e}^{k}={e}^{0}+\sum_{i=0}^{k-1} \alpha_{i} {d}^{i}, \: k=0, \ldots, n-1$$
-também obtemos
-$$\begin{aligned}
-\alpha_{k} %- \frac{({d}^{k})^{T}\left({e}^{k}-\sum_{i=0}^{k-1} \alpha_{i} {d}^{i}\right)}{({d}^{k})^{T} {d}^{k}} \\
-%&=-\frac{({d}^{k})^{T} {e}^{k}-\sum_{i=0}^{k-1} \alpha_{i} ({d}^{k})^{T} {d}^{i}}{({d}^{k})^{T} {d}^{k}}\\
-& = -\frac{({d}^{k})^{T} {e}^{k}}{({d}^{k})^{T} {d}^{k}}, \quad k=0, \ldots, n-1
-\end{aligned}$$  
-* **Problema:** Não conhecemos os erros $e_k$ (Por quê?)"""
-
-# ╔═╡ 42a5f901-42af-4737-b3fe-6cd2c5558e85
-md"""
-## Direções $Q$-conjugadas (ou $Q$-ortogonais)
-
-* Se escolhermos agora ${d}^{0}, \ldots, {d}^{n-1}$ *$Q$-conjugadas*, i.e.,
-    $$({d}^{i})^T Q {d}^{j} = 0\text{ se } i\neq j,$$ 
-     conseguiremos computar os $\alpha_k$'s
-* Vejamos 
-    $$({d}^{k})^TQ{e}^{0}=-\sum_{i=0}^{n-1} \alpha_{i} ({d}^{k})^TQ{d}^{i}= -\alpha_{k}({d}^{k})^TQ {d}^{k}$$
-    e logo
-    $$\alpha_{k}=-\frac{({d}^{k})^T(Q{e}^{0})}{({d}^{k})^TQ {d}^{k}} = \frac{({d}^{k})^Tr^0}{({d}^{k})^TQ {d}^{k}},  k=0,\ldots,n-1$$
 """
 
-# ╔═╡ ada8e3e4-6179-450f-90d2-1dcaa2972073
+# ╔═╡ bfb3be3c-348c-47d7-a6bb-e1b3f6f45447
 md"""
-* Da mesma forma como nas direções ortogonais temos
-$$\begin{aligned} \alpha_{k} %&=- \frac{({d}^{k})^{T}Q\left({e}^{k}-\sum_{i=0}^{k-1} \alpha_{i} {d}^{i}\right)}{({d}^{k})^{T}Q {d}^{k}} \\
-%&=-\frac{({d}^{k})^{T} Q{e}^{k}-\sum_{i=0}^{k-1} \alpha_{i} ({d}^{k})^{T}Q {d}^{i}}{({d}^{k})^{T} Q{d}^{k}}\\
-& = -\frac{({d}^{k})^{T} Q{e}^{k}}{({d}^{k})^{T} {d}^{k}} = \frac{({d}^{k})^Tr^k}{({d}^{k})^TQ {d}^{k}}, \quad k=0, \ldots, n-1\end{aligned}$$  
-* Note que sempre é possível computar $r^k ( = b-Qx^k = -\nabla f(x^k))$!
+### Exemplo - Função de Rosenbrock
+Vamos novamente usar a função (não-linear) de Rosenbrock
+$$f(x) = (1-x_1)^2 + 100(x_2-x_1^2)^2$$
+para testar o pacote `NLPModels`."""
+
+# ╔═╡ cc06c78f-64e9-45cd-9f37-c47a121c4819
+f(x) = (1-x[1])^2 + 100(x[2] - x[1]^2)^2
+
+# ╔═╡ 0b82f325-2366-484c-97ac-3c06aa42299c
+md"""
+com ponto inicial $(-1.2,1.0)$."""
+
+# ╔═╡ d7332e5a-6cae-4730-ad63-673aac4c3fa0
+x0 = [-1.2,1.0]
+
+# ╔═╡ 08563857-0435-48c2-9140-88ef0ecd7fe8
+md"""
+* Vamos criar o modelo usando a interface `ADNLPModel`
+
+```julia
+using ADNLPModel
+```
+
+O problema (P) em Julia será escrito como
+```julia
+ min  f(x)
+s. a  lcon ≤ c(x) ≤ ucon
+      lvar ≤   x  ≤ uvar
+```
+* As entradas de `ADNLPModel` podem ser
+
+```julia
+    ADNLPModel(f, x0)
+    ADNLPModel(f, x0, lvar, uvar)
+    ADNLPModel(f, x0, c, lcon, ucon)
+    ADNLPModel(f, x0, lvar, uvar, c, lcon, ucon)
+```"""
+
+# ╔═╡ cbbd7ef8-7edc-4437-a6a9-578970bbf2df
+ adnlp = ADNLPModel(f,x0)
+
+# ╔═╡ de0c5fc2-d51f-4667-9aaa-11817141236b
+md"""
+### [API](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/api/#)
+
+
+
+* Em otimização, como vimos, além dos valores $f(x)$ e $c(x)$ no ponto $x$ também precisamos das derivadas relacionadas, isto é,
+
+- ``\nabla f(x), \nabla^2 f(x), J_c(x) = \nabla c(x)^T``; 
+- ``\nabla^2 f(x) + \sum_{i=1}^m \lambda_i \nabla^2 c_i(x)``,
+  Hessiana da função Lagrangeana no ponto $(x,\lambda)$.
+> Para todas as funções disponibilizadas pelo pacote veja o [Guia de Referências](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/api/#Reference-guide) do API
+
+* Vejam alguas que podemos usar"""
+
+# ╔═╡ 5e50fcf7-41c3-4eea-88c3-5c364a56a633
+begin
+    @show obj(adnlp, adnlp.meta.x0)
+    @show grad(adnlp, adnlp.meta.x0)
+    @show hess(adnlp, adnlp.meta.x0)
+    @show objgrad(adnlp, adnlp.meta.x0)
+    @show hprod(adnlp, adnlp.meta.x0, ones(2))
+    @show H = hess_op(adnlp, adnlp.meta.x0)
+    H * ones(2)
+end
+
+# ╔═╡ 66707443-e267-4859-985a-ffd5b34e0ef8
+print(adnlp.counters)
+
+# ╔═╡ 7a6ffe6b-3bec-48ea-8b26-66f00830bb90
+md"""
+#### Função `hess` em detalhes
+
+* Apenas devolve o triangulo inferior da matriz Hessiana.
+
 """
 
-# ╔═╡ 5c57a49b-caeb-4b83-b4dd-a2535cc01948
+# ╔═╡ 822fb793-2193-4716-b73f-86fcd133eb46
+Hx = hess(adnlp,adnlp.meta.x0)
+
+# ╔═╡ ff060319-e465-46ac-9069-4c6644a9f9ea
+HxS = Symmetric(Hx,:L) #ou Hermitian(Hx,:L)
+
+# ╔═╡ 9ca409b1-0fb7-469f-8ce7-8a00a9251c21
+F = cholesky(HxS)
+
+# ╔═╡ ae0e932a-9900-48dc-b8f5-f3e8f77dcb51
 md"""
-## Algoritmo CG
-* **Passo 0.** Defina $x^0$, $d^0 = r^0 = b - Qx^0$ e $k=0$
-* **Passo 1.** Enquanto $r^k = b- Qx^k \neq 0$ faça
-    * $
-    \alpha_{k} = \frac{({d}^{k})^Tr^k}{({d}^{k})^TQ {d}^{k}}
-    $
-    * ${x}^{k+1}={x}^{k}+\alpha_{k} {d}^{k}$
+### Usando modelos em JuMP"""
+
+# ╔═╡ a2b62afa-1a37-4a8e-9afa-4976e4b8450f
+begin
     
-    * $k = k+1$
+    rosen = Model()
+    
+    @variable(rosen,x[1:2])
+    
+    @NLobjective(rosen,Min,(1-x[1])^2 + 100(x[2]-x[1]^2)^2)
+    print(rosen)
+    
+    jpnlp = MathOptNLPModel(rosen)
+
+end
+
+# ╔═╡ a4ed64db-d5da-4254-b113-63e7d65c1e36
+md"""
+### Usando a biblioteca CUTEst"""
+
+# ╔═╡ 9d0eff7c-ce65-4046-883c-6edf494b3fd9
+md"""
+* Um pouco mais sobre [CUTEst](https://github.com/ralna/CUTEst/wiki)
+    > CUTEst, a Constrained and Unconstrained Testing Environment on steroids, is the latest evolution of CUTE, the constrained and unconstrained testing environment for numerical optimization.
+
+* A interface com Julia que estamos usando permite acessar os problemas da CUTEst + outras bibliotecas (manualmente) que estão descritas no formato SIF.
+"""
+
+# ╔═╡ 2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
+CUTEst.select()# Sempre preciso finalizar o modelo
+
+
+
+
+# ╔═╡ d17bc84d-611d-4e7a-ae14-06584448c3ba
+problmes2D = CUTEst.select(max_var=2,contype=:unc)
+
+# ╔═╡ 0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
+md"""
+## Vamos usar nosso método de Newton
+
+
+* Vamos voltar ao método de Newton que implementamos na Aula 02 porém 
+    * o adaptaremos para uso do NLPModels
+    * usaremos fatoração de Cholesky pra resolver o sistema linear de Newton
+    * adicionaremos uma busca linear inexata com [Armijo com backtracking](https://en.wikipedia.org/wiki/Backtracking_line_search) para garantir descenso suficiente da direção de Newton $d_k$:
+    
     """
 
-# ╔═╡ 1eb074aa-d8a9-4481-b5be-01873584a2fe
-md"""
-## Como encontrar direções conjugadas $d^k$' s?
-"""
-
-# ╔═╡ 0aba6fba-7597-468e-8f51-e6b24fafc490
-md"""
-### Vamos usar resíduos para computar as direções conjugadas
-* Atualizamos o próximo resíduo usando o resíduo anterior
-$$\begin{aligned}
-{r}^{k+1} &=-{Q} {e}^{k+1} \\
-&=-{Q} (x^{k+1} - x^*) \\
-&=-{Q} ({x}^{k}+\alpha^{k} {d}^{k} - x^*) \\
-&=-{Q}\left({e}^{k}+\alpha^{k} {d}^{k}\right) \\
-&={r}^{k}-\alpha^{k} {Q} {d}^{k}, \:  k=0, \ldots, n-1
-\end{aligned}$$
-
-* O próximo resíduo ${r}^{k+1} $ é uma combinação linear do resíduo atual ${r}^{k} $ e de $ {Q} {d}^{k}$
-
-* Através dos ${r}^{0}, \ldots, {r}^{k}$ calcularemos as direções conjugadas ${d}^{0}, \ldots, {d}^{k}$ """
-
-# ╔═╡ 9a428c08-5e1e-428e-a903-5356e2764ac5
-md"""
-## Algoritmo CG
-
-* **Passo 0.** Defina $x^0$, $d^0 = r^0 = b - Qx^0$ e $k=0$
-* **Passo 1.** Enquanto $r^k \neq 0$ faça
-    * ``\alpha_{k} = \frac{({d}^{k})^Tr^k}{({d}^{k})^TQ {d}^{k}}``
-    * ``{x}^{k+1}={x}^{k}+\alpha_{k} {d}^{k}``
-    
-    * ``{r}^{k+1} = {r}^{k}-\alpha^{k} {Q} {d}^{k}``
-    
-    * ``k = k+1``
-"""
-
-# ╔═╡ bc15f0d0-4e01-442f-b734-f1f8fb9148e2
-md"""
-> * **Proposição.**
->$$\mathcal{D}_{k}:=\operatorname{span}\left\{{d}^{0}, \ldots, {d}^{k}\right\}=\operatorname{span}\left\{{r}^{0}, \ldots, {r}^{k}\right\}, \:k=0, \ldots, n-1$$
- 
-* Como ${r}^{k+1}={r}^{k}-\alpha_{k} {A} {d}^{k}$ e além disso ${d}^{k} \in \mathcal{D}_{k}$ e ${r}^{k} \in \mathcal{D}_{k}$ então
-$$\begin{aligned}
-\mathcal{D}_{k+1} &:=\operatorname{span}\left\{\mathcal{D}_{k}, {r}^{k+1}\right\} \\
-&=\operatorname{span}\left\{\mathcal{D}_{k}, {r}^{k}-\alpha_{k} {A} {d}^{k}\right\} \\
-&=\operatorname{span}\left\{\mathcal{D}_{k}, {A} {d}^{k}\right\}
-\end{aligned}$$ 
-
-"""
-
-# ╔═╡ dd2f1ff3-32fc-4715-be0c-980cb7907e9e
-md"""
-> **Lema.** $r^{k+1} \perp \mathcal{D}_k = \operatorname{span}\left\{{d}^{0}, \ldots, {d}^{k}\right\}=\operatorname{span}\left\{{r}^{0}, \ldots, {r}^{k}\right\}, \:k=0, \ldots, n-1$"""
-
-# ╔═╡ 77e9b36d-53b1-442f-b05e-827b270ce4bf
-md"""
-> **Teorema.** $\mathcal{D}_{k} =\operatorname{span}\left\{{r}^{0}, {Q} {r}^{0}, {Q}^{2} {r}^{0}, \ldots, {Q}^{k} {r}^{0}\right\}, \: k=0, \ldots, n-1$
-     
-* O subepsaçco da direita  é o *subespaço de Krylov de dimensão k+1* dado por $Q$ e $r^0$ e é denotado por  $\mathcal{K}_{k+1}(Q,r^0)$"""
-
-# ╔═╡ ea0993ef-a515-47e8-b4d5-58a0fe8288b6
-md"""
-> **Corolário.** $r^{k}\perp_A\mathcal{D}_{k-2}$, para $k=0, \ldots, n-1$, isto é, $r^{k}$ é $A$-conjugado à $d^j$, $j<k-2$."""
-
-# ╔═╡ ed463e53-42d9-4060-80f4-eeec2aeb2037
-md"""
-#### Consequência importante
-
-
-* Se o resíduo $r^{k}$ é conjugado às direções  ${d}^{0}, \ldots, {d}^{k-2}$, então, a cada passo, por calcular o resíduo, já geramos um vetor que é  $Q$-orthogonal a todas as direções anteriores com exceção de  ${d}^{k-1}$. 
-
-* Para obter a direção  ${d}^{k}$, que seja conjugada com as anteriores, tomamos o resíduo ${r}^{k}$ e o fazemos   $Q$-orthogonal à ${d}^{k-1}$. 
-
-* Precisamos apenas encontrar o coeficiente  $\beta_{k-1}$ que corresponde à ${d}^{k-1}$ ao fazermos Gram-Schimidt com produto interno dado por $Q$:
-$$\begin{aligned}
-{d}^{k} &={r}^{k}+\beta_{k-1} {d}^{k-1} \\
-\implies 0 = ({d}^{k})^{T} {Q} {d}^{k-1} &=({r}^{k})^{T} {Q} {d}^{k-1}+\beta_{k-1} ({d}^{k-1})^{T} {Q} {d}^{k-1} \\
-\implies \beta_{k-1} &=-\frac{({r}^{k})^{T} {Q} {d}^{k-1}}{({d}^{k-1})^T {Q} {d}^{k-1}}
-\end{aligned}$$
-"""
-
-# ╔═╡ 14e09e94-4e37-4e80-a5f8-1031833754c6
-md"""
-### Forma prática do CG
-
-* Fazendo $k = k-1$ obtemos (usando ${d}^{k} ={r}^{k}+\beta_{k-1} {d}^{k-1}$)
-$$\alpha_{k} = \frac{({d}^{k})^Tr^k}{({d}^{k})^TQ {d}^{k}} = \frac{(r^k)^Tr^k}{({d}^{k})^TQ {d}^{k}}$$
-
-$$\beta_{k}=-\frac{({r}^{k+1})^{T} {Q} {d}^{k}}{({d}^{k})^T {Q} {d}^{k}} = \frac{({r}^{k+1})^{T} {r}^{k+1}}{({r}^{k})^T {r}^{k}}$$
-"""
-
-# ╔═╡ e8c2d4d5-584a-46ef-b034-b849ccbda791
-md"""
-## Algoritmo CG
-
-
-* **Passo 0.** Defina $x^0$, $d^0 = r^0 = b - Qx^0$ e $k=0$
-* **Passo 1.** Enquanto $r^k \neq 0$ faça
-    * $
-    \alpha_{k} = \frac{({r}^{k})^Tr^k}{({d}^{k})^TQ {d}^{k}}
-    $
-    * $  {x}^{k+1}={x}^{k}+\alpha_{k} {d}^{k}$
-    
-    * ${r}^{k+1} = {r}^{k}-\alpha_{k} {Q} {d}^{k}$
-    
-    * $\beta_{k}=  \frac{({r}^{k+1})^{T} {r}^{k+1}}{({r}^{k})^T {r}^{k}}$
-    
-    *  ${d}^{k+1} ={r}^{k+1}+\beta_{k} {d}^{k}$
-    
-    * $    k = k+1$
-    """
-
-# ╔═╡ de46a2c7-64c6-43f6-a462-d3ce5755aab2
-begin
-    function iter_CG(xₖ, rₖ, dotrₖ,dₖ, quad, k)
-        """
-        Iteração basica de CG
-        Parâmetros:
-        xₖ: iteração atual
-        rₖ: residuo atual
-        dotrₖ: prod interno rₖ
-        dₖ: direção atual
-        quad: quadratica de interesse
-        """
-        Qdₖ = quad.Q*dₖ
-        
-    	αₖ = dotrₖ/dot(dₖ,Qdₖ)
-        
-        xₖ = xₖ + αₖ*dₖ
-        
-        if mod(k,50) != 0 
-        	rₖ = rₖ - αₖ*Qdₖ
-        else
-        	rₖ = -grad(quad,xₖ)
-        end
-        
-        dotrₖ_old = dotrₖ
-    
-        dotrₖ = dot(rₖ,rₖ)
-        
-        βₖ = dotrₖ/dotrₖ_old
-        
-        dₖ = rₖ +  βₖ*dₖ 
-        
-        
-        return xₖ, rₖ, dotrₖ, dₖ
-        
-    
-    end
-    
-    function CG(quad::Quadratica,x₀::Vector;itmax::Int = 10,ε::Float64 = 1e-8)
-           """
-        Método de Gradientes Conjugados
-        Parâmetros:
-        quad: Quadratica
-        x₀: ponto inicial
-        itmax: número max de iterçãoes de CG
-        ε: tolerância
-         """
-        xₖ = x₀
-        rₖ = -grad(quad,xₖ)
-        dₖ = copy(rₖ)
-        k = 0
-        X = xₖ 
-        dotrₖ = dot(rₖ,rₖ)
-        while k <= itmax && dotrₖ >= ε^2
-         	xₖ, rₖ, dotrₖ, dₖ = iter_CG(xₖ, rₖ, dotrₖ,dₖ, quad, k)
-            X = hcat(X,xₖ)
-            k += 1
-        end
-        return X, k
-    end
-end
-
-# ╔═╡ ac3e49a4-fd2e-467c-911c-28b7ce962a48
-begin
-    x₀ = [-2.,-2]
-    itmax=20
-    @show xCG, kCG = CG(quad,x₀,itmax=itmax)
-    plot!(plt,xCG[1,:],yCG[2,:],st=:path)
-end
-
-# ╔═╡ 144607ef-c34e-4328-b425-41fb6a47fc92
-begin
-    scatter!(plt,[xsol[1]],[xsol[2]])
-    scatter!(plt,[x₀[1]],[x₀[2]])
-    plot!(plt,xGD[1,:],xGD[2,:],st=:path)
-end
-
-# ╔═╡ bbe527e4-2860-41c3-a288-50db524e718e
-md"""
-## Exemplos com `BigFloat` e matrizes maiores"""
-
-# ╔═╡ 9f02967d-8f44-4f8a-a1e6-cfb73540f0d2
-eps()
-
-# ╔═╡ ef6d763e-9e4c-4da9-9c66-8a8d57b82fd9
-pi
-
-# ╔═╡ 9fcf3a85-b4c0-42d8-abd1-e9860148d1c5
-BigFloat(pi)
-
-# ╔═╡ 173bc4aa-2d58-4289-be2c-4cd74e4121b2
-eps(BigFloat)
-
-# ╔═╡ 76573a3b-1a74-45b5-9657-e9673e466853
-md"""
-#### Mesma matrix em $2\times 2$"""
-
-# ╔═╡ 1a663f9b-d708-4526-9c60-29f18e0e74eb
-let
-    quadbig = Quadratica(BigFloat.(Q),BigFloat.(b),0)
-    X, k = CG(quadbig,BigFloat.(x₀))
-    @show k
-    X[:,end]
-end
-
-# ╔═╡ e60c9175-aa19-4dbc-9935-6cc6327c1d3b
-md"""
-#### Matrix de tamanho grande"""
-
-# ╔═╡ 50aac538-0a70-4884-839a-b673018e8f44
-begin
-    Random.seed!(1234)
-    N = 5000
-    B = randn(N,N)
-    B = 2*I + B'B
-    @show cond(B)
-    c = randn(N)
-    x₂ = randn(N)
-    quad2 = Quadratica(B,c,0)
-end
-
-# ╔═╡ 559c0c0c-07c4-40ad-b035-79896a30c5d3
-let
-    xCG2, kCG2 = CG(quad2, x₂, itmax=5_000)
-    @show kCG2
-    norm(c - quad2.Q*xCG2[:,end])
-end
-
-# ╔═╡ 04ea14bf-8e98-474e-9b68-39c5f50fa252
-md"""
-## Métodos iterativos para minização não-linear
-
-### E se a função não for quadrática?
-
-* **Exemplo**  Função de [Rosenbrock](https://en.wikipedia.org/wiki/Rosenbrock_function)
-
-$$f(x,y) = (a-x)^2 + b(y-x^2)^2$$
-
-- Minimizador global em $(a,a^2)$ com $f(a,a^2) = 0$
-    
-* Considere o modelo quadrático dado por Taylor de 2ª ordem em torno de $x_k$ para $f$
-
-$$m_k(d) = f(x_k) + \nabla f(x_k)^Td + \frac{1}{2}d^T\nabla^2f(x_k)d$$
-
-* O mínimo de $m_k$, (uma quadrática), se $\nabla^2f(x_k)$ for definida positiva é a única solução do sistema linear
-
-$$\nabla^2f(x_k)d = -\nabla f(x_k)$$
-"""
-
-# ╔═╡ 19fc8963-163b-4843-bec8-0adadef4aa71
-md"""
-#### Como calcular as derivadas?
-
-* Pacote de diferenciação automática [`ForwardDiff.jl`](https://github.com/JuliaDiff/ForwardDiff.jl) para cômputo de $\nabla f(x)$ e $\nabla^2 f(x)$
-"""
-
-# ╔═╡ ad66c429-d077-4ba0-8b3c-3688457263af
-begin    
-    f_rosen(x) = (1-x[1])^2 + 100 * (x[2] - x[1]^2)^2
-    ∇f_rosen(x) = ForwardDiff.gradient(f_rosen, x)
-    H_rosen(x) = ForwardDiff.hessian(f_rosen, x)
-    
-    x₀RB = [1.0; 1.0]
-    
-    mₖ(d) = f_rosen(x₀RB) + dot(∇f_rosen(x₀RB), d) + dot(H_rosen(x₀RB) * d, d) / 2
-    q_model(x) = mₖ(x - x₀RB)
-    
-    α, β = 0.95,1.05
-    surface(
-        range(α, β, length=50),
-        range(α, β, length=50),
-        (x,y) -> f_rosen([x;y]),
-        linealpha = 0.3,
-        camera = (40,40))
-    surface!(
-        range(α, β, length=50),
-        range(α, β, length=50),
-        (x,y) -> q_model([x;y]),
-    )
-end
-
-# ╔═╡ 36a8ad88-dc05-4275-b038-7a01e0786e55
-let
-    x = range(-1.5, 1.5, length=400)
-    y = range(-0.5 , 1.5, length=400)
-    contour(x,y,(x,y) -> f_rosen([x;y]),levels=0.1:5.0:500)
-    scatter!([1.0],[1.0],c=:red,label=:false)
-end
-
-# ╔═╡ e8b5bca1-8d0f-4bdd-93b7-16b2ea29b4df
-md"""
-## Método de Newton
-
-### Newton para sistemas não-lineares
-
-O método de Newton para encontrar uma solução $x^*$ do o sistema não-linear $F(x) = 0$, com $F:\mathbb{R}^n\to\mathbb{R}^n$, usa o polinômio de Taylor de 1ª ordem em torno de uma aproximação $\bar x$ obtendo o sistema linear
-
-$$F(\bar x) + J_F(\bar x) (x - \bar x) = F(x) = 0$$
-
-em que $J_F(\bar x)$ é a matriz jacobiana de $F$. 
-
-Quando $J_F(\bar x)$ é não-singular podemos resolver o sistema linear acima pelo método iterativo
-
-$$x_{k+1} = x_k -  J_F(x^k)^{-1} F(x^k)$$
-"""
-
-# ╔═╡ 1f5422a6-260c-4657-96eb-4a76ed1aa4cf
-md"""
-### Método de Newton para Otimização
-
-Como queremos encontrar ponto estacionário, isto é, $x^*$ tal que $\nabla f(x^*)=0$, fazendo $F = \nabla f$ obtemos o método iterativo
-
-$$x_{k+1} = x_k -  (\nabla^2f(x_k))^{-1} \nabla f(x_k)$$
-
-uma vez que $J_{\nabla f}(x) = \nabla^2f(x)$.
-
-* A direção $d = -  (\nabla^2f(x_k))^{-1} \nabla f(x_k)$ é  exatamente a solução da minimização do modelo quadrático 
-
-* Se $\nabla^2f(x)$ for definida positiva, a direção de Newton sempre é de descida. (Por quê?)
-
-* Possivelmente precisamos computar um tamanho de passo $\alpha_k$ por busca linear exata (como no método de máxima descida) ou busca inexata (Passo de Armijo)
-"""
-
-# ╔═╡ c8312eac-cef2-42fa-adcb-f489e0148835
-function newton(f, ∇f, H, x₀::Vector; itmax = 10_000,ε = 1e-6)
+# ╔═╡ 36045b7a-9714-48d0-8594-da74204d9df0
+function newton(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6)
 	k = 0
-    xₖ = x₀
-    gradₖ = ∇f(xₖ)
+    xₖ = nlp.meta.x0
+    gradₖ = grad(nlp,xₖ)
     while k <= itmax && norm(gradₖ) >= ε
-        d = - (H(xₖ)\gradₖ)
+        Hx = hess(nlp,xₖ)
+        F = cholesky(Symmetric(Hx,:L))
+        d = - (F \ gradₖ)
     	xₖ = xₖ + d 
-        gradₖ = ∇f(xₖ)
+        gradₖ = grad(nlp,xₖ)
     	k += 1
     end
     return xₖ, k
 end
 
-# ╔═╡ a945546d-f1fa-43da-87cb-755856cdda82
-newton(f_rosen, ∇f_rosen, H_rosen, [10,10.])
+# ╔═╡ 3c0de4c1-275d-4491-894d-a08fcc132c84
+md"""
 
-# ╔═╡ 8a95fb7e-29e5-4a10-a3e6-497f89c5ae17
-Float64[10,10]
+> **Armijo com backtracking.**
+>   Enquanto  $f(x_k + \alpha_kd_k) > f(x_k) + \alpha_k\rho\nabla f(x_k)^Td_k $ escolha novo  $\alpha_k \in [0.1\alpha_k,0.9\alpha_k]$, para $\rho > 0$"""
 
-# ╔═╡ 82650b8c-3e26-4c81-a9f5-136553f01484
+# ╔═╡ 4949b3f7-00b1-4a77-9508-6771559fa9ee
 
+function newton_bt(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6,ρ::Float64 = 0.5)
+	k = 0
+    xₖ = nlp.meta.x0
+    fₖ = obj(nlp,xₖ)
+    gradₖ = grad(nlp,xₖ)
+    while k <= itmax && norm(gradₖ) >= ε
+        Hx = hess(nlp,xₖ)
+        F = cholesky(Symmetric(Hx,:L))
+        dₖ = - (F \ gradₖ)
+        αₖ = 1.0
+        xtrial = xₖ + αₖ*dₖ 
+        fα = obj(nlp,xtrial)
+        while fα > fₖ + ρ * αₖ * dot(gradₖ,dₖ) 
+            αₖ *= 0.5
+            xtrial = xₖ + αₖ*dₖ 
+            fα = obj(nlp,xtrial)
+        end
+        xₖ = xtrial
+        fₖ = obj(nlp,xₖ)
+        gradₖ = grad(nlp,xₖ)
+    	k += 1
+    end
+    return xₖ, k
+end
+
+# ╔═╡ 25d0693f-5c0b-4594-8a6b-b66295175be6
+newton_bt(cutenlp)
+
+# ╔═╡ 3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
+md"""
+### Um exemplo que Newton BT não funciona"""
+
+# ╔═╡ 6ddcee41-8e23-44ab-827e-7c34e1d7e49d
+newton_bt(nlp)
+
+# ╔═╡ f48a36a2-04b3-4c7a-86ed-8c4d80664199
+finalize(nlp)
+
+# ╔═╡ d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
+newton_bt(nlp)
+
+# ╔═╡ 3bab6ea9-ac3f-43d7-968f-e3d78871984f
+newton(nlp)
+
+# ╔═╡ 5719e8c4-c321-4372-941c-b619887198f5
+md"""
+## BenchmarkOrofiles
+O pacote `BenchmarkProfiles` fornece uma fácil maneira de construir os Performance Profiles de Dolan e Moré. """
+
+# ╔═╡ 21f54f3c-697f-48af-a6d5-658e41512b1c
+begin
+    @show xₖ, k = newton(adnlp)
+    print(adnlp.counters)
+end
+
+# ╔═╡ 7beb5c0c-a37e-48e0-84af-005692720beb
+begin
+    using CUTEst
+    
+    cutenlp = CUTEstModel("ROSENBR")
+    
+
+end
+
+# ╔═╡ febfa521-4cc0-401a-9505-f1e4ee22d468
+begin
+    jpnlp.meta.x0
+    @show xₖ, k = newton(jpnlp)
+    print(jpnlp.counters)
+
+end
+
+# ╔═╡ 787da96c-ea60-4d1b-8f7c-1175a68ed42c
+nlp = CUTEstModel("HIMMELBB")
+
+# ╔═╡ 20e8b10d-9e2c-4685-a0e3-731b540fa6b8
+nlp = CUTEstModel("BOX")
+
+# ╔═╡ d4ae1ba5-3cb7-4438-90a2-0edb3fa8e161
+begin
+    cutenlp = CUTEstModel("ROSENBR")
+    @show xₖ, k = newton(cutenlp)
+    print(cutenlp.counters)
+
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+ADNLPModels = "54578032-b7ea-4c30-94aa-7cbd1cce6c9a"
+BenchmarkProfiles = "ecbce9bc-3e5e-569d-9e29-55181f61f8d0"
+CUTEst = "1b53aba6-35b6-5f92-a507-53c67d53f819"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
+NLPModelsJuMP = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-ForwardDiff = "~0.10.36"
+ADNLPModels = "~0.7.0"
+BenchmarkProfiles = "~0.4.4"
+CUTEst = "~0.13.2"
+JuMP = "~1.19.0"
+NLPModels = "~0.20.0"
+NLPModelsJuMP = "~0.12.5"
 Plots = "~1.39.0"
 """
 
@@ -771,7 +372,19 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "efcdcc77e0af778303dbdf9835cdce83fae6dd44"
+project_hash = "0f5ce7a819b331f27d758c3a8b14c935157ad166"
+
+[[deps.ADNLPModels]]
+deps = ["ColPack", "ForwardDiff", "LinearAlgebra", "NLPModels", "Requires", "ReverseDiff", "SparseArrays"]
+git-tree-sha1 = "998be23c2c7719476475b4e6d0444d84b9cb97aa"
+uuid = "54578032-b7ea-4c30-94aa-7cbd1cce6c9a"
+version = "0.7.0"
+
+[[deps.AMD]]
+deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
+git-tree-sha1 = "45a1272e3f809d36431e57ab22703c6896b8908f"
+uuid = "14f7f29c-3bd6-536c-9a0b-7339e30b5a3e"
+version = "0.5.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -782,6 +395,18 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.BenchmarkProfiles]]
+deps = ["CSV", "LaTeXStrings", "NaNMath", "Printf", "Requires", "Tables"]
+git-tree-sha1 = "9abfd0c22270e47522e44a21c4b1c56dd1841ea6"
+uuid = "ecbce9bc-3e5e-569d-9e29-55181f61f8d0"
+version = "0.4.4"
+
+[[deps.BenchmarkTools]]
+deps = ["JSON", "Logging", "Printf", "Profile", "Statistics", "UUIDs"]
+git-tree-sha1 = "f1f03a9fa24271160ed7e73051fba3c1a759b53f"
+uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+version = "1.4.0"
 
 [[deps.BitFlags]]
 git-tree-sha1 = "2dc09997850d68179b69dafb58ae806167a32b1b"
@@ -794,17 +419,63 @@ git-tree-sha1 = "9e2a6b69137e6969bab0152632dcb3bc108c8bdd"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+1"
 
+[[deps.CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
+git-tree-sha1 = "679e69c611fff422038e9e21e270c4197d49d918"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.12"
+
+[[deps.CUTEst]]
+deps = ["CUTEst_jll", "DataStructures", "JSON", "Libdl", "LinearAlgebra", "NLPModels", "Pkg", "SparseArrays"]
+git-tree-sha1 = "756440bf0fcc05fe8c87279e0ca6bcad2cb3ab12"
+uuid = "1b53aba6-35b6-5f92-a507-53c67d53f819"
+version = "0.13.2"
+
+[[deps.CUTEst_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "07f32509cdcda92b517f8d2928abc375622ee03b"
+uuid = "bb5f6f25-f23d-57fd-8f90-3ef7bad1d825"
+version = "2.0.6+0"
+
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
 git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+1"
 
+[[deps.ChainRulesCore]]
+deps = ["Compat", "LinearAlgebra"]
+git-tree-sha1 = "1287e3872d646eed95198457873249bd9f0caed2"
+uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+version = "1.20.1"
+weakdeps = ["SparseArrays"]
+
+    [deps.ChainRulesCore.extensions]
+    ChainRulesCoreSparseArraysExt = "SparseArrays"
+
+[[deps.CodecBzip2]]
+deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
+git-tree-sha1 = "9b1ca1aa6ce3f71b3d1840c538a8210a043625eb"
+uuid = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
+version = "0.8.2"
+
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "59939d8a997469ee05c4b4944560a820f9ba0d73"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.4"
+
+[[deps.ColPack]]
+deps = ["ColPack_jll", "LinearAlgebra", "Random", "SparseArrays"]
+git-tree-sha1 = "83a23545e7969d8b21fb85271b9cd04c8e09d08b"
+uuid = "ffa27691-3a59-46ab-a8d4-551f45b8d401"
+version = "0.3.0"
+
+[[deps.ColPack_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "2a518018a2b888ba529e944d34d4bd84b54d652d"
+uuid = "f218ff0c-cb54-5151-80c4-c0f62c730ce6"
+version = "0.3.0+0"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
@@ -877,6 +548,11 @@ git-tree-sha1 = "ac67408d9ddf207de5cfa9a97e114352430f01ed"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.18.16"
 
+[[deps.DataValueInterfaces]]
+git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
+uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
+version = "1.0.0"
+
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -928,6 +604,11 @@ git-tree-sha1 = "4558ab818dcceaab612d1bb8c19cee87eda2b83c"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.5.0+0"
 
+[[deps.ExprTools]]
+git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.10"
+
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
 git-tree-sha1 = "b57e3acbe22f8484b4b5ff66a7499717fe1a9cc8"
@@ -939,6 +620,17 @@ deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers",
 git-tree-sha1 = "466d45dc38e15794ec7d5d63ec03d776a9aff36e"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.4.4+1"
+
+[[deps.FastClosures]]
+git-tree-sha1 = "acebe244d53ee1b461970f8910c235b259e772ef"
+uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+version = "0.3.2"
+
+[[deps.FilePathsBase]]
+deps = ["Compat", "Dates", "Mmap", "Printf", "Test", "UUIDs"]
+git-tree-sha1 = "9f00e42f8d99fdde64d40c8ea5d14269a2e2c1aa"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.21"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -966,12 +658,10 @@ deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "Lo
 git-tree-sha1 = "cf0fe81336da9fb90944683b8c41984b08793dad"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.36"
+weakdeps = ["StaticArrays"]
 
     [deps.ForwardDiff.extensions]
     ForwardDiffStaticArraysExt = "StaticArrays"
-
-    [deps.ForwardDiff.weakdeps]
-    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -984,6 +674,15 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
+
+[[deps.FunctionWrappers]]
+git-tree-sha1 = "d62485945ce5ae9c0c48f124a84998d755bae00e"
+uuid = "069b7b12-0de2-55c6-9aab-29f3d0a68a2e"
+version = "1.1.3"
+
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
@@ -1038,6 +737,12 @@ git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
 
+[[deps.InlineStrings]]
+deps = ["Parsers"]
+git-tree-sha1 = "9cc2baf75c6d09f9da536ddf58eb2f29dedaf461"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.0"
+
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -1046,6 +751,11 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
 version = "0.2.2"
+
+[[deps.IteratorInterfaceExtensions]]
+git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
+uuid = "82899510-4779-5014-852e-03e436cf321d"
+version = "1.0.0"
 
 [[deps.JLFzf]]
 deps = ["Pipe", "REPL", "Random", "fzf_jll"]
@@ -1071,11 +781,29 @@ git-tree-sha1 = "60b1194df0a3298f460063de985eae7b01bc011a"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.0.1+0"
 
+[[deps.JuMP]]
+deps = ["LinearAlgebra", "MacroTools", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays"]
+git-tree-sha1 = "5036b4cf6d85b08d80de09ef65b4d951f6e68659"
+uuid = "4076af6c-e467-56ae-b986-b466b2749572"
+version = "1.19.0"
+
+    [deps.JuMP.extensions]
+    JuMPDimensionalDataExt = "DimensionalData"
+
+    [deps.JuMP.weakdeps]
+    DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
+
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "f6250b16881adf048549549fba48b1161acdac8c"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.1+0"
+
+[[deps.LDLFactorizations]]
+deps = ["AMD", "LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "70f582b446a1c3ad82cf87e62b878668beef9d13"
+uuid = "40e66cde-538c-5869-a4ad-c39174c6795b"
+version = "0.10.1"
 
 [[deps.LERC_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1188,6 +916,16 @@ version = "2.36.0+0"
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
+[[deps.LinearOperators]]
+deps = ["FastClosures", "LDLFactorizations", "LinearAlgebra", "Printf", "Requires", "SparseArrays", "TimerOutputs"]
+git-tree-sha1 = "58e2ca62646a62e18f86253b9c2a2d821c2d934b"
+uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+version = "2.6.0"
+weakdeps = ["ChainRulesCore"]
+
+    [deps.LinearOperators.extensions]
+    LinearOperatorsChainRulesCoreExt = "ChainRulesCore"
+
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
 git-tree-sha1 = "7d6dd4e9212aebaeed356de34ccf262a3cd415aa"
@@ -1223,6 +961,12 @@ version = "0.5.13"
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
+[[deps.MathOptInterface]]
+deps = ["BenchmarkTools", "CodecBzip2", "CodecZlib", "DataStructures", "ForwardDiff", "JSON", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test", "Unicode"]
+git-tree-sha1 = "8b40681684df46785a0012d352982e22ac3be59e"
+uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+version = "1.25.2"
+
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "NetworkOptions", "Random", "Sockets"]
 git-tree-sha1 = "c067a280ddc25f196b5e7df3877c6b226d390aaf"
@@ -1251,6 +995,24 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 version = "2022.10.11"
+
+[[deps.MutableArithmetics]]
+deps = ["LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "806eea990fb41f9b36f1253e5697aa645bf6a9f8"
+uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
+version = "1.4.0"
+
+[[deps.NLPModels]]
+deps = ["FastClosures", "LinearAlgebra", "LinearOperators", "Printf", "SparseArrays"]
+git-tree-sha1 = "51b458add76a938917772ee661ffb9d59b4c7e5d"
+uuid = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
+version = "0.20.0"
+
+[[deps.NLPModelsJuMP]]
+deps = ["JuMP", "LinearAlgebra", "MathOptInterface", "NLPModels", "Printf", "SolverCore", "SparseArrays"]
+git-tree-sha1 = "857a6fe3c5ce6cd45f33398dff62bfe77859586a"
+uuid = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
+version = "0.12.5"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -1366,6 +1128,12 @@ version = "1.39.0"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
+
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "03b4c25b43cb84cee5c90aa9b5ea0a78fd848d2f"
@@ -1381,6 +1149,10 @@ version = "1.4.1"
 [[deps.Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[deps.Profile]]
+deps = ["Printf"]
+uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
 [[deps.Qt6Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Vulkan_Loader_jll", "Xorg_libSM_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_cursor_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "libinput_jll", "xkbcommon_jll"]
@@ -1425,6 +1197,12 @@ git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
 
+[[deps.ReverseDiff]]
+deps = ["ChainRulesCore", "DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAlgebra", "LogExpFunctions", "MacroTools", "NaNMath", "Random", "SpecialFunctions", "StaticArrays", "Statistics"]
+git-tree-sha1 = "d1235bdd57a93bd7504225b792b867e9a7df38d5"
+uuid = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+version = "1.15.1"
+
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
@@ -1434,6 +1212,12 @@ deps = ["Dates"]
 git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
+
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "0e7508ff27ba32f26cd459474ca2ede1bc10991f"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.1"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -1452,6 +1236,12 @@ version = "1.1.0"
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[[deps.SolverCore]]
+deps = ["LinearAlgebra", "NLPModels", "Printf"]
+git-tree-sha1 = "9fb0712d597d6598857ae50b7744df17b1137b38"
+uuid = "ff4d7338-4cf1-434d-91df-b86cb86fb843"
+version = "0.3.7"
+
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
 git-tree-sha1 = "66e0a8e672a0bdfca2c3f5937efb8538b9ddc085"
@@ -1467,12 +1257,21 @@ deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_j
 git-tree-sha1 = "e2cfc4012a19088254b3950b85c3c1d8882d864d"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "2.3.1"
+weakdeps = ["ChainRulesCore"]
 
     [deps.SpecialFunctions.extensions]
     SpecialFunctionsChainRulesCoreExt = "ChainRulesCore"
 
-    [deps.SpecialFunctions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+[[deps.StaticArrays]]
+deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
+git-tree-sha1 = "7b0e9c14c624e435076d19aea1e5cbdec2b9ca37"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "1.9.2"
+weakdeps = ["ChainRulesCore", "Statistics"]
+
+    [deps.StaticArrays.extensions]
+    StaticArraysChainRulesCoreExt = "ChainRulesCore"
+    StaticArraysStatisticsExt = "Statistics"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "36b3d696ce6366023a0ea192b4cd442268995a0d"
@@ -1506,6 +1305,18 @@ deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
 
+[[deps.TableTraits]]
+deps = ["IteratorInterfaceExtensions"]
+git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
+uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
+version = "1.0.1"
+
+[[deps.Tables]]
+deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "OrderedCollections", "TableTraits"]
+git-tree-sha1 = "cb76cf677714c095e535e3501ac7954732aeea2d"
+uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+version = "1.11.1"
+
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
@@ -1520,6 +1331,12 @@ version = "0.1.1"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.23"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "1fbeaaca45801b4ba17c251dd8603ef24801dd84"
@@ -1590,6 +1407,17 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "93f43ab61b16ddfb2fd3bb13b3ce241cafb0e6c9"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.31.0+0"
+
+[[deps.WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
+
+[[deps.WorkerUtilities]]
+git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
+uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
+version = "1.6.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
@@ -1865,65 +1693,52 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╠═c1c88e38-ed61-4972-ad34-6ec8e12ccb2c
-# ╟─7bc47d0d-ae5a-46a8-8259-d5ff97688ef5
-# ╟─1cf30040-5e6c-4133-a671-5f696f3b0fdf
-# ╟─21fc2aab-baac-4728-910a-8532c5b0b970
-# ╟─8f68a47f-d9eb-41fc-9b7a-7be223f8be04
-# ╟─ea9dcff2-1baa-41ed-b34d-c9171dd50a00
-# ╟─56818fe8-c4ac-4b63-adc2-d1697d910755
-# ╠═f8c79e87-52ba-40a5-ae11-d40934161fe9
-# ╠═9bfef0bc-a076-4027-83bf-15edcb79061b
-# ╟─7c054414-17e5-4038-9c22-6f1b3c0da40c
-# ╠═fe40f901-76fb-4529-848c-587ae2eadf1f
-# ╠═deb274d5-9b53-4e19-adbd-9b11d75eb94c
-# ╟─888e0a1c-adee-48a8-979a-a7ebee0c97af
-# ╟─3ce4a8a6-ccfc-4f94-8f35-b5a991a2b81d
-# ╟─bc76c6d9-65e9-4bf0-bbc8-b07f5f1f88bd
-# ╠═1df5a8ab-441f-411c-8b57-7edaef46f3f5
-# ╠═dd7d4d7c-967b-40e4-a23c-bbc6191475ac
-# ╠═144607ef-c34e-4328-b425-41fb6a47fc92
-# ╟─0ab2450d-ceec-4bb3-9142-3d1fa3e4616d
-# ╟─07d2aab4-b2f3-48e9-8a4f-836c4fa0c76c
-# ╟─9293ff33-f327-4618-b833-c07964022d8c
-# ╟─ea1869b1-226d-4496-9b68-87e186f33861
-# ╟─788aa9ef-28b4-4edb-b36a-a0281b6b8f1e
-# ╟─5b3e39fc-78c6-4cb9-89ef-61012d117482
-# ╟─42a5f901-42af-4737-b3fe-6cd2c5558e85
-# ╟─ada8e3e4-6179-450f-90d2-1dcaa2972073
-# ╟─5c57a49b-caeb-4b83-b4dd-a2535cc01948
-# ╟─1eb074aa-d8a9-4481-b5be-01873584a2fe
-# ╟─0aba6fba-7597-468e-8f51-e6b24fafc490
-# ╟─9a428c08-5e1e-428e-a903-5356e2764ac5
-# ╟─bc15f0d0-4e01-442f-b734-f1f8fb9148e2
-# ╟─dd2f1ff3-32fc-4715-be0c-980cb7907e9e
-# ╟─77e9b36d-53b1-442f-b05e-827b270ce4bf
-# ╟─ea0993ef-a515-47e8-b4d5-58a0fe8288b6
-# ╟─ed463e53-42d9-4060-80f4-eeec2aeb2037
-# ╟─14e09e94-4e37-4e80-a5f8-1031833754c6
-# ╟─e8c2d4d5-584a-46ef-b034-b849ccbda791
-# ╠═de46a2c7-64c6-43f6-a462-d3ce5755aab2
-# ╠═ac3e49a4-fd2e-467c-911c-28b7ce962a48
-# ╟─bbe527e4-2860-41c3-a288-50db524e718e
-# ╠═9f02967d-8f44-4f8a-a1e6-cfb73540f0d2
-# ╠═ef6d763e-9e4c-4da9-9c66-8a8d57b82fd9
-# ╠═9fcf3a85-b4c0-42d8-abd1-e9860148d1c5
-# ╠═173bc4aa-2d58-4289-be2c-4cd74e4121b2
-# ╟─76573a3b-1a74-45b5-9657-e9673e466853
-# ╠═1a663f9b-d708-4526-9c60-29f18e0e74eb
-# ╟─e60c9175-aa19-4dbc-9935-6cc6327c1d3b
-# ╠═50aac538-0a70-4884-839a-b673018e8f44
-# ╠═559c0c0c-07c4-40ad-b035-79896a30c5d3
-# ╟─04ea14bf-8e98-474e-9b68-39c5f50fa252
-# ╟─19fc8963-163b-4843-bec8-0adadef4aa71
-# ╠═67404a91-fe04-4b6f-ab9a-c6400b0d0766
-# ╠═ad66c429-d077-4ba0-8b3c-3688457263af
-# ╠═36a8ad88-dc05-4275-b038-7a01e0786e55
-# ╟─e8b5bca1-8d0f-4bdd-93b7-16b2ea29b4df
-# ╟─1f5422a6-260c-4657-96eb-4a76ed1aa4cf
-# ╠═c8312eac-cef2-42fa-adcb-f489e0148835
-# ╠═a945546d-f1fa-43da-87cb-755856cdda82
-# ╠═8a95fb7e-29e5-4a10-a3e6-497f89c5ae17
-# ╠═82650b8c-3e26-4c81-a9f5-136553f01484
+# ╟─939da41f-839a-4ad8-b226-4b3d4fe78f0a
+# ╟─225b92e8-3bc1-4b8a-8bae-7b01de881b49
+# ╟─98eb4816-8251-4a65-b68d-65d9e18cde8b
+# ╠═13aa94c4-687a-4d5c-ab04-2fbe9045ee0f
+# ╟─3b799acd-47a8-4411-8997-009ff541ac53
+# ╟─1412a7d1-6628-47bb-9bcd-4bc87b4a9579
+# ╠═5a80bca7-d433-4e4f-a634-2e07bbda6afa
+# ╟─fddd97dd-c3f2-4c15-b1a1-9d94e9f026d7
+# ╟─bfb3be3c-348c-47d7-a6bb-e1b3f6f45447
+# ╠═cc06c78f-64e9-45cd-9f37-c47a121c4819
+# ╟─0b82f325-2366-484c-97ac-3c06aa42299c
+# ╠═d7332e5a-6cae-4730-ad63-673aac4c3fa0
+# ╟─08563857-0435-48c2-9140-88ef0ecd7fe8
+# ╠═6eea5a33-994f-49cc-9ec9-b81637e09f7b
+# ╠═cbbd7ef8-7edc-4437-a6a9-578970bbf2df
+# ╠═de0c5fc2-d51f-4667-9aaa-11817141236b
+# ╠═5e50fcf7-41c3-4eea-88c3-5c364a56a633
+# ╠═66707443-e267-4859-985a-ffd5b34e0ef8
+# ╟─7a6ffe6b-3bec-48ea-8b26-66f00830bb90
+# ╠═822fb793-2193-4716-b73f-86fcd133eb46
+# ╠═ff060319-e465-46ac-9069-4c6644a9f9ea
+# ╠═9ca409b1-0fb7-469f-8ce7-8a00a9251c21
+# ╟─ae0e932a-9900-48dc-b8f5-f3e8f77dcb51
+# ╠═fad4f8d2-3bc0-4689-adca-0eb4cc61e2a2
+# ╠═a2b62afa-1a37-4a8e-9afa-4976e4b8450f
+# ╟─a4ed64db-d5da-4254-b113-63e7d65c1e36
+# ╟─9d0eff7c-ce65-4046-883c-6edf494b3fd9
+# ╠═7beb5c0c-a37e-48e0-84af-005692720beb
+# ╠═2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
+# ╠═d17bc84d-611d-4e7a-ae14-06584448c3ba
+# ╟─0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
+# ╠═36045b7a-9714-48d0-8594-da74204d9df0
+# ╠═21f54f3c-697f-48af-a6d5-658e41512b1c
+# ╠═febfa521-4cc0-401a-9505-f1e4ee22d468
+# ╠═d4ae1ba5-3cb7-4438-90a2-0edb3fa8e161
+# ╟─3c0de4c1-275d-4491-894d-a08fcc132c84
+# ╠═4949b3f7-00b1-4a77-9508-6771559fa9ee
+# ╠═25d0693f-5c0b-4594-8a6b-b66295175be6
+# ╟─3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
+# ╠═787da96c-ea60-4d1b-8f7c-1175a68ed42c
+# ╠═6ddcee41-8e23-44ab-827e-7c34e1d7e49d
+# ╠═f48a36a2-04b3-4c7a-86ed-8c4d80664199
+# ╠═20e8b10d-9e2c-4685-a0e3-731b540fa6b8
+# ╠═d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
+# ╠═3bab6ea9-ac3f-43d7-968f-e3d78871984f
+# ╟─5719e8c4-c321-4372-941c-b619887198f5
+# ╠═db0af882-451d-49ed-b250-846cc537ed3e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
