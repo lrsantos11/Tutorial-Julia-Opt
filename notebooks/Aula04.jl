@@ -4,339 +4,404 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ b08d6f28-9c29-4d73-957f-a2385514b0c1
-using PlutoUI
+# ╔═╡ 13aa94c4-687a-4d5c-ab04-2fbe9045ee0f
+using Plots, LinearAlgebra
 
-# ╔═╡ 551a6584-9534-4d04-a4f0-e07f4ef78233
-begin 
-	using Plots
-	using LinearAlgebra
-	using JuMP 
-	using HiGHS
-	using Ipopt
-end
+# ╔═╡ 5a80bca7-d433-4e4f-a634-2e07bbda6afa
+using NLPModels
 
-# ╔═╡ cbb94315-4bbe-44cf-8de1-1250d4d3bbe9
+# ╔═╡ 6eea5a33-994f-49cc-9ec9-b81637e09f7b
+using ADNLPModels
+
+# ╔═╡ fad4f8d2-3bc0-4689-adca-0eb4cc61e2a2
+using JuMP, NLPModelsJuMP
+
+# ╔═╡ e509e504-984f-4048-8e6c-4c86f525a66a
+using CUTEst
+
+# ╔═╡ dac805e5-dea4-4102-aa71-0a1168e11d4c
+using BenchmarkProfiles
+
+# ╔═╡ 939da41f-839a-4ad8-b226-4b3d4fe78f0a
 md"""
 ### Tutorial de  Julia para Otimização
-## Aula 02 - Modelagem e Solvers em Julia
+## Aula 04 - NLPModels e Comparação de Algortimos
 
 ### Ministrante
-- Luiz-Rafael Santos do ([LABMAC/UFSC/Blumenau](http://labmac.mat.blumenau.ufsc.br))
-
-   - [Página pessoal](https://lrsantos11.github.io)
-   * Email para contato: [l.r.santos@ufsc.br](mailto:l.r.santos@ufsc.br) ou [lrsantos11@gmail.com](mailto:lrsantos11@ufsc.br)
-   * Repositório do curso no Github: [https://github.com/lrsantos11/Tutorial-Julia-Opt](https://github.com/lrsantos11/Tutorial-Julia-Opt)
+- Luiz-Rafael Santos ([LABMAC/UFSC/Blumenau](http://labmac.mat.blumenau.ufsc.br))
+    * Email para contato: [l.r.santos@ufsc.br](mailto:l.r.santos@ufsc.br) ou [lrsantos11@gmail.com](mailto:lrsantos11@ufsc.br)
+    - Repositório do curso no [Github](https://github.com/lrsantos11/Tutorial-Julia-Opt)
 """
 
-# ╔═╡ af01283f-8afd-4f1f-8cdb-c12f34d24c0f
+# ╔═╡ 225b92e8-3bc1-4b8a-8bae-7b01de881b49
 md"""
-### Pacotes para Modelagem
+### Pacotes para contrução e comparação de algoritmos
 
 
 
-* Pacotes do  [JuliaOpt](https://www.juliaopt.org/)
-    
-    * [JuMP](https://jump.dev/JuMP.jl/v0.19.0/index.html): lingagem de modelagem algébrica para otimização  linear, quadratica, and não-linear (com ou sem restrições)
-        
-    * Solver 
-        * [HiHGs](https://github.com/jump-dev/HiGHs.jl) para otimização linear e inteira (código-aberto)
-        * [Ipopt](https://github.com/jump-dev/Ipopt.jl) para otimização não-linear (código-aberto)
-        * [Gurobi](https://github.com/jump-dev/Gurobi.jl), KNitro, CPLEX, Xpress, Mosek também possuem interface. 
+
 * [JuliaSmoothOptimizers (JSO)](https://juliasmoothoptimizers.github.io/) coleção de pacotes em Julia para desenvolvimento, teste e *benchmark* de algoritmos de otimização (não-linear).
     
     * Modelagem
         * [NLPModels](https://github.com/JuliaSmoothOptimizers/NLPModels.jl): API para representar problemas de otimização `min f(x) s.t. l <= c(x) <= u`
+    * Benchmark
+        * [BenchmarkProfiles](https://github.com/JuliaSmoothOptimizers/BenchmarkProfiles.jl)
     * Respositórios de problemas
-        * [CUtEst.jl](https://github.com/JuliaSmoothOptimizers/CUTEst.jl): interface para o [CUTEst](http://ccpforge.cse.rl.ac.uk/gf/project/cutest/wiki), repositório de problemas de otimização para teste  comparação de algoritmos de otimização."""
+        * [CUTEst.jl](https://github.com/JuliaSmoothOptimizers/CUTEst.jl): interface para o [CUTEst](http://ccpforge.cse.rl.ac.uk/gf/project/cutest/wiki), repositório de problemas de otimização para teste  comparação de algoritmos de otimização."""
 
-# ╔═╡ 319606b0-06be-49b3-9804-09588df84b40
+# ╔═╡ 98eb4816-8251-4a65-b68d-65d9e18cde8b
+
+
+# ╔═╡ 3b799acd-47a8-4411-8997-009ff541ac53
 md"""
-## Modelagem de Problemas de otimização
+## NLPModels
+"""
 
-* Vamos instalar:
-    * o pacote de modelagem `JuMP`
-    * os solvers `HiGHS` e `Ipopt` 
-        * São código-aberto e Julia vai instalar não só a interface como o próprio programa ou biblioteca
-* Outros solvers como `Gurobi` e `Mosek` também podem ser usados facilente mas  depende de o programa estar instalado e de licensa (a acadêmica é bem fácil de conseguir), então não vai funcionar em qualquer ambiente computacional. """
-
-# ╔═╡ b4e4ec0b-4fa1-405c-a704-330e99d7e08e
+# ╔═╡ 1412a7d1-6628-47bb-9bcd-4bc87b4a9579
 md"""
-### Exemplo 1 - Programação Linear
+### Interfaces do NLPModels
 
-* O problema de programação linear pode ser dado da forma
-```math
-\begin{align}
-&\min  &c^{T} x \\
-&\text { s.a } &A x=b \\
-&& x \geq 0
-\end{align}.
+- [NLPModelsModifiers.jl](https://github.com/JuliaSmoothOptimizers/NLPModelsModifiers.jl):  Models that modify existing models.   For instance, creating slack variables, or moving constraints into the objective functions, or using Quasi-Newton LBFSG approximations to the Hessian.
+- [ADNLPModels.jl](https://github.com/JuliaSmoothOptimizers/ADNLPModels.jl): Models with automatic differentiation.
+- [CUTEst.jl](https://github.com/JuliaSmoothOptimizers/CUTEst.jl):  For problems from [CUTEst](https://github.com/ralna/CUTEst/wiki).
+- [AmplNLReader.jl](https://github.com/JuliaSmoothOptimizers/AmplNLReader.jl):  For problems modeled using [AMPL](https://ampl.com)
+- [NLPModelsJuMP.jl](https://github.com/JuliaSmoothOptimizers/NLPModelsJuMP.jl):  For problems modeled using [JuMP.jl](https://github.com/jump-dev/JuMP.jl).
+- [QuadraticModels.jl](https://github.com/JuliaSmoothOptimizers/QuadraticModels.jl):  For problems with quadratic and linear structure.
+- [LLSModels.jl](https://github.com/JuliaSmoothOptimizers/LLSModels.jl):  Creates a linear least squares model.
+- [PDENLPModels.jl](https://github.com/JuliaSmoothOptimizers/PDENLPModels.jl):   For PDE-constrained problems.
+- [BlockNLPModels.jl](https://github.com/exanauts/BlockNLPModels.jl): For modeling block structured nonlinear optimization problems.
+
+> Veja mais na [documentação de NLPModels](https://jso.dev/NLPModels.jl/stable/models/)
+"""
+
+# ╔═╡ fddd97dd-c3f2-4c15-b1a1-9d94e9f026d7
+md"""
+* NLPModels considera o problema de otimização dado da forma
+
+$$\tag{P} \begin{aligned}
+\min \quad & f(x) \\
+& c_L \leq c(x) \leq c_U \\
+& \ell \leq x \leq u.
+\end{aligned}$$
+
+"""
+
+# ╔═╡ bfb3be3c-348c-47d7-a6bb-e1b3f6f45447
+md"""
+### Exemplo - Função de Rosenbrock
+Vamos novamente usar a função (não-linear) de Rosenbrock
+$$f(x) = (1-x_1)^2 + 100(x_2-x_1^2)^2$$
+para testar o pacote `NLPModels`."""
+
+# ╔═╡ cc06c78f-64e9-45cd-9f37-c47a121c4819
+f_rosen(x) = (1-x[1])^2 + 100(x[2] - x[1]^2)^2
+
+# ╔═╡ 0b82f325-2366-484c-97ac-3c06aa42299c
+md"""
+com ponto inicial $(-1.2,1.0)$."""
+
+# ╔═╡ d7332e5a-6cae-4730-ad63-673aac4c3fa0
+x0_rosen = [-1.2,1.0]
+
+# ╔═╡ 08563857-0435-48c2-9140-88ef0ecd7fe8
+md"""
+* Vamos criar o modelo usando a interface `ADNLPModel`
+
+```julia
+using ADNLPModel
 ```
 
-* Vamos utilizar `JuMP` para modelar um problema e usar dois solvers disponíveis pra resolvê-lo."""
-
-# ╔═╡ cbde2f19-feaf-4be2-93c9-7f49b2c5855a
-begin
-    function plot_feasible()
-        contour(range(-0.5, 10, length=100), range(-0.5, 5, length=100), 
-            (x,y)->-12x-20y, 
-            levels=10,
-            frame_style=:origin)
-        plot!([0;  0 ; 8; 6  ; 0 ],
-          [ 4; 0 ; 0; 1.5 ; 4], c=:blue, lw=2, lab="Conjunto viável",series=:path)
-    end
-    plot_feasible()
-end
-
-# ╔═╡ 9852ab34-97cf-4b26-847f-4b5db935e79d
-md"""
-* Considere o problema
-```math
-\begin{align*}
-& \min & -12x - 20y \\
-& \;\;\text{s.t.} & 3x + 4y \leq 24 \\
-& & 5x + 12y \leq 48 \\
-& & x \geq 0 \\
-& & y \geq 0 \\
-\end{align*}
+O problema (P) em Julia será escrito como
+```julia
+ min  f(x)
+s. a  lcon ≤ c(x) ≤ ucon
+      lvar ≤   x  ≤ uvar
 ```
+* As entradas de `ADNLPModel` podem ser
+
+```julia
+    ADNLPModel(f, x0)
+    ADNLPModel(f, x0, lvar, uvar)
+    ADNLPModel(f, x0, c, lcon, ucon)
+    ADNLPModel(f, x0, lvar, uvar, c, lcon, ucon)
+```"""
+
+# ╔═╡ cbbd7ef8-7edc-4437-a6a9-578970bbf2df
+ adnlp = ADNLPModel(f_rosen,x0_rosen)
+
+# ╔═╡ de0c5fc2-d51f-4667-9aaa-11817141236b
+md"""
+### [API](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/api/#)
+
+
+
+* Em otimização, como vimos, além dos valores $f(x)$ e $c(x)$ no ponto $x$ também precisamos das derivadas relacionadas, isto é,
+
+- ``\nabla f(x), \nabla^2 f(x), J_c(x) = \nabla c(x)^T``; 
+- ``\nabla^2 f(x) + \sum_{i=1}^m \lambda_i \nabla^2 c_i(x)``,
+  Hessiana da função Lagrangeana no ponto $(x,\lambda)$.
+
+> Para todas as funções disponibilizadas pelo pacote veja o [Guia de Referências](https://juliasmoothoptimizers.github.io/NLPModels.jl/stable/api/#Reference-guide) do API
+
+* Vejam algumas que podemos usar
 """
 
-# ╔═╡ ba4b6a47-3edd-4ca4-a8a0-57c0fbecae03
-begin
-    # Modelo e Solver
-    model = Model(HiGHS.Optimizer)
-    
-    # Variáveis, canalizações (ou caixas) e tipo
-    @variable(model, x ≥ 0)
-    @variable(model, y >= 0)
-    
-    # Restrições
-    @constraint(model, R1, 3x + 4y ≤ 24)
-    @constraint(model, 5x + 12y <= 48)
-    
-    # Função objetivo
-    @objective(model, Min, -12x -20y)
-    
-    print(model)
-end
+# ╔═╡ 2338b5b8-63c2-4980-a510-1ba7689f3da5
+@show obj(adnlp, adnlp.meta.x0);
 
-# ╔═╡ aedf693c-410f-4f14-a466-bcad4222582f
-begin
-    # Chamada do Solver
-    optimize!(model)
-    
-    #Declarar solução
-    @show value(x)
-    @show value(y)
-    @show objective_value(model)
-    plot_feasible()
-    scatter!([value(x)],[value(y)],label="Solução")
-end
+# ╔═╡ 1d918e2e-0130-40ca-817c-ff617abcd096
+@show grad(adnlp, adnlp.meta.x0);
 
-# ╔═╡ 0820ad44-04b8-41a4-9543-a9ae46c7f06b
+# ╔═╡ 47a8a32d-d6a1-4cf5-baf4-3530f819b701
+@show hess(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 7edfe366-6ffb-4f60-9e5e-d0bd769e2cf3
+@show objgrad(adnlp, adnlp.meta.x0);
+
+# ╔═╡ 9a10288f-f902-432d-aa54-8a8f9d4169a3
+@show hprod(adnlp, adnlp.meta.x0, ones(2));
+
+# ╔═╡ 707140b3-a3f4-495f-8a92-6138046b5694
 md"""
-### Vamos olhar para cada linha do código"""
-
-# ╔═╡ 201d8a53-552d-4831-8fa8-47cc5e6dff4d
-md"""
-* Um modelo é um objeto que contém as variáveis, as restrições, as opções do solver
-* São criados com a função `Model()`.
-* Um modelo pode ser criado sem o solver
-
-```julia
-model = Model(HiGHS.Optimizer)
-``` """
-
-# ╔═╡ 7d15fd80-7d1f-4148-958b-8410ecf5a095
-md"""
-* Uma variável é modelada usando `@variable(nome_modelo,  nome_variavel_e_limitantes, variable_type)`. 
-
-* Limitantes podem ser superiores ou inferiores. Caso não definido, a variável é tratada como real
-```julia
-@variable(model, x >= 0)
-@variable(model, y >= 0)
-``` 
+- Matrix Hessiana (e Jacobiana, quando for o caso) acessível como Operador Linear por meio de `mat-vec`.
 """
 
-# ╔═╡ 60e6246b-a54c-40ec-9022-f57d792b489f
+# ╔═╡ 1cf5fb46-951e-4b1d-aed6-0add01d2f30c
+H = hess_op(adnlp, adnlp.meta.x0)
+
+# ╔═╡ e3b1ebe4-8ec8-436b-80ed-ed8dd7b5baa6
+H * ones(2)
+
+# ╔═╡ 66707443-e267-4859-985a-ffd5b34e0ef8
+print(adnlp.counters)
+
+# ╔═╡ 7a6ffe6b-3bec-48ea-8b26-66f00830bb90
 md"""
-* Uma restrição é modelada usando  `@constraint(nome_modelo, restricao)`.
-```julia
-@constraint(model, 3x + 4y <= 24)
-@constraint(model, 5x + 12y <= 48)
-``` 
+#### Função `hess` em detalhes
+
+* Apenas devolve o triangulo inferior da matriz Hessiana.
 
 """
 
-# ╔═╡ 0107785e-7c07-446e-8965-02d4915130ac
+# ╔═╡ 822fb793-2193-4716-b73f-86fcd133eb46
+Hx = hess(adnlp,adnlp.meta.x0)
+
+# ╔═╡ ff060319-e465-46ac-9069-4c6644a9f9ea
+HxS = Symmetric(Hx,:L) #ou Hermitian(Hx,:L)
+
+# ╔═╡ 9ca409b1-0fb7-469f-8ce7-8a00a9251c21
+F = cholesky(HxS)
+
+# ╔═╡ ae0e932a-9900-48dc-b8f5-f3e8f77dcb51
 md"""
-* A função objetivo é declarada usando `@objective(ome_modelo, Min/Max, function a ser otimizada)`
+### Usando modelos em JuMP"""
 
-* `print(nome_modelo)` imprime o modelo (opcional).
-```julia
-@objective(model, Min, -12x - 20y)
-print(model)
-``` 
-"""
-
-# ╔═╡ 7a050ef0-9017-4c0f-9434-df20781a1951
-md"""
-* Para resolver o problema de otimização chamamos a funlção `optimize`
-```julia
-optimize!(model)
-``` """
-
-# ╔═╡ 60eb40b1-6471-4e4e-acd3-030bc4bd50a4
-md"""
-* `x` e `y` são variáveis que estão no *workspace* mas para obtermos seus valores precisamos da função `value`
-
-* Da mesma maneira, para obter o valor da função objetivo no ótimo usamos `objective_value(nome_modelo)`
-
-```julia
-@show value(x);
-@show value(y);
-@show objective_value(model);
-``` """
-
-# ╔═╡ f81b8773-97d6-4d4c-a193-180674ee0095
-md"""
-## Exemplo 2 - Problema das $N$-rainhas (Problema de Factibilidade)
-
-> O problema das $N$-rainhas consiste em um tabuleiro de xadrez de tamanho $N\times N$ no qual se quer colocar $N$ rainhas de tal modo que nenhuma rainha possa atacar outra. No xadrez, uma rainha pode se mover verticalmente, horizontalmente e diagonalmente. Desta maneira, não pode haver mais de uma rainha em nenhuma linha, coluna ou diagonal do tabuleiro."""
-
-# ╔═╡ fc9d90f8-ef14-4a3f-960b-2a7fb12fd4d4
-md"""
-$(Resource("https://upload.wikimedia.org/wikipedia/commons/1/1f/Eight-queens-animation.gif"))"""
-
-# ╔═╡ e57f571b-a5e4-4831-ac9f-3030a511759b
+# ╔═╡ a2b62afa-1a37-4a8e-9afa-4976e4b8450f
 begin
-    N = 16
-    Nrainhas = Model(HiGHS.Optimizer)
     
-    #Definindo as variáveis
-    @variable(Nrainhas,queens[i=1:N,j=1:N],Bin)
-end
-
-# ╔═╡ 0ccf0c79-c462-4940-9137-c78f0865af40
-# Restrições em relação a soma das colunas
-for j in 1:N
-	@constraint(Nrainhas,sum(queens[:,j]) .== 1)
-end
-
-# ╔═╡ f42a5272-14af-4ddb-84fd-5ebef7d39b4b
-# Restrições em relação a soma das linhas
-for i in 1:N
-	@constraint(Nrainhas,sum(queens[i,:]) == 1)
-end
-
-# ╔═╡ a580e01f-468f-4e48-b130-68368b1213bf
-
-
-# ╔═╡ 3025b770-41f0-45de-b95e-6ffbbb6716c6
-diag(queens,-3)
-
-# ╔═╡ f8e82221-49d8-4923-bff3-d5e906069e39
-# Restrições das diagonais principais
-for i ∈ -(N-1):(N-1)
-	@constraint(Nrainhas,sum(diag(queens,i)) .<=1)
-end
-
-# ╔═╡ 953959e4-e31b-415d-b39c-602bdd2401c0
-queens
-
-# ╔═╡ 3a4ebe46-4865-42ea-9d4e-9e353f3b6cb2
-reverse(queens,dims=1)
-
-# ╔═╡ c13bcad6-1402-45ff-806b-2e7b640ffaff
-# Restrições das diagonais secundárias
-@constraint(Nrainhas,[sum(diag(reverse(queens,dims=1),i)) for i = -(N-1):(N-1)] .<=1)
-
-# ╔═╡ e27c7dbf-00a1-4d14-bc2a-60378c066eac
-optimize!(Nrainhas)
-
-# ╔═╡ e92e4f60-8a48-40d5-886b-eeddd8ceaea6
-round.(Int,value.(queens))
-
-# ╔═╡ 82e741d2-7238-43ab-893b-259e328035ba
-md"""
-### Exemplo 3 - Função de Rosenbrock (Bananinha)
-
-
-* Vamos usar `JuMP` e `Ipopt`  para minimizar a função (não-linear) de Rosenbrock
-$$f(x) = (1-x_1)^2 + 4(x_2-x_1^2)^2$$
-"""
-
-# ╔═╡ 4840eab7-f606-4781-83ca-90a0381f9585
-	f_rosen(x,y) = (1 -x)^2 + 4*(y - x^2)^2
-
-# ╔═╡ 51e64021-1527-4082-887f-def21cd80504
-begin
-	w_1 = range(-2.0, 2.0, length=1000)
-	w_2 = range(-2.0, 2.0, length=1000)
-	z =  @. f_rosen(w_1,w_2)
-
-	contour(w_1,w_2, f_rosen)
-
-end
-
-# ╔═╡ ea0971d5-5195-4f62-a08a-bf039fa7b5de
-begin
-    rosen = Model(Ipopt.Optimizer)
+    rosen = Model()
     
-    @variable(rosen,w[1:2])
+    @variable(rosen,x[1:2])
     
-    @NLobjective(rosen,Min,(1-w[1])^2 + 4(w[2]-w[1]^2)^2)
-    
+    @NLobjective(rosen,Min,(1-x[1])^2 + 100(x[2]-x[1]^2)^2)
     print(rosen)
     
+    jpnlp_rosen = MathOptNLPModel(rosen)
 
 end
 
-# ╔═╡ cf1be8dc-75cb-48eb-a81b-9591da7c79e7
-optimize!(rosen)
+# ╔═╡ a4ed64db-d5da-4254-b113-63e7d65c1e36
+md"""
+### Usando a biblioteca CUTEst"""
+
+# ╔═╡ 9d0eff7c-ce65-4046-883c-6edf494b3fd9
+md"""
+* Um pouco mais sobre [CUTEst](https://github.com/ralna/CUTEst/wiki)
+    > CUTEst, a Constrained and Unconstrained Testing Environment on steroids, is the latest evolution of CUTE, the constrained and unconstrained testing environment for numerical optimization.
+
+* A interface com Julia que estamos usando permite acessar os problemas da CUTEst + outras bibliotecas (manualmente) que estão descritas no formato SIF.
+"""
+
+# ╔═╡ b50e599d-9def-4e64-bee5-7e45c94d7d8b
+begin
+	cutenlp_rosen = CUTEstModel("ROSENBR")
+end
+
+# ╔═╡ 113f535d-579f-43e5-880a-d5a4ba12acef
+md"""
+- Para selecionar problemas da biblioteca CUTEst pode-se usar o `CUTEst.select`
+"""
+
+# ╔═╡ 2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
+CUTEst.select()# Sempre preciso finalizar o modelo
+
+# ╔═╡ d17bc84d-611d-4e7a-ae14-06584448c3ba
+problmes2D = CUTEst.select(max_var=2, contype=:unc)
+
+# ╔═╡ 0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
+md"""
+## Vamos usar nosso método de Newton
 
 
-# ╔═╡ ecd525c8-6b0d-4e9c-9c97-bf1be1b8030a
-value.(w)
+* Vamos voltar ao método de Newton que implementamos na Aula 02 porém 
+    * o adaptaremos para uso do NLPModels
+    * usaremos fatoração de Cholesky pra resolver o sistema linear de Newton
+    * adicionaremos uma busca linear inexata com [Armijo com backtracking](https://en.wikipedia.org/wiki/Backtracking_line_search) para garantir descenso suficiente da direção de Newton $d_k$:
+    
+"""
+
+# ╔═╡ 36045b7a-9714-48d0-8594-da74204d9df0
+function newton(nlp::AbstractNLPModel; itmax = 10_000, ε = 1e-6)
+	k = 0
+    xₖ = nlp.meta.x0
+    gradₖ = grad(nlp,xₖ)
+    while k <= itmax && norm(gradₖ) >= ε
+        Hx = hess(nlp,xₖ)
+        F = cholesky(Symmetric(Hx,:L))
+        d = - (F \ gradₖ)
+    	xₖ = xₖ + d 
+        gradₖ = grad(nlp,xₖ)
+    	k += 1
+    end
+    return xₖ, k
+end
+
+# ╔═╡ 21f54f3c-697f-48af-a6d5-658e41512b1c
+begin
+    @show xₖ_rosen_newton_adnlp, k__rosen_newton_adnlp = newton(adnlp)
+    print(adnlp.counters)
+end
+
+# ╔═╡ febfa521-4cc0-401a-9505-f1e4ee22d468
+begin
+    jpnlp_rosen.meta.x0
+    @show xₖ_rosen_newton_jpnlp, k__rosen_newton_jpnlp = newton(jpnlp_rosen)
+    print(jpnlp_rosen.counters)
+
+end
+
+# ╔═╡ c248b331-d2cd-4270-b24e-272ee8cbebe2
+@show xₖ_rosen_newton_cutenlp, k_rosen_newton_cutenlp = newton(cutenlp_rosen)
+
+# ╔═╡ e4d8a64c-8c46-453e-b540-25942c18adf7
+print(cutenlp_rosen.counters)
+
+# ╔═╡ 3c0de4c1-275d-4491-894d-a08fcc132c84
+md"""
+
+> **Armijo com backtracking.**
+>   Enquanto  $f(x_k + \alpha_kd_k) > f(x_k) + \alpha_k\rho\nabla f(x_k)^Td_k $ escolha novo  $\alpha_k \in [0.1\alpha_k,0.9\alpha_k]$, para $\rho > 0$"""
+
+# ╔═╡ 648f21a8-0862-41ac-ba21-4f84f86ded87
+function armijo_bt(fα, xₖ, gradₖ, dₖ, ρ)
+	αₖ = 1.0
+	while fα > fₖ + ρ * αₖ * dot(gradₖ,dₖ) 
+            αₖ *= 0.5
+            xtrial .= xₖ + αₖ*dₖ 
+            fα = obj(nlp,xtrial)
+        end
+	return xtrial, fα
+end
+
+# ╔═╡ 4949b3f7-00b1-4a77-9508-6771559fa9ee
+
+function newton_bt(nlp::AbstractNLPModel; itmax = 10_000,ε = 1e-6,ρ::Float64 = 0.5)
+	k = 0
+    xₖ = nlp.meta.x0
+    fₖ = obj(nlp,xₖ)
+    gradₖ = grad(nlp,xₖ)
+    while k <= itmax && norm(gradₖ) >= ε
+        Hx = hess(nlp,xₖ)
+        F = cholesky(Symmetric(Hx,:L))
+        dₖ = - (F \ gradₖ)
+        xtrial = xₖ + αₖ*dₖ 
+        fα = obj(nlp,xtrial)
+		xtrial, fα  = armijo_bt(fα, xₖ, gradₖ, dₖ, ρ)
+        xₖ = xtrial
+        fₖ = obj(nlp,xₖ)
+        gradₖ = grad(nlp,xₖ)
+    	k += 1
+    end
+    return xₖ, k
+end
+
+# ╔═╡ 25d0693f-5c0b-4594-8a6b-b66295175be6
+newton_bt(cutenlp_rosen)
+
+# ╔═╡ 3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
+md"""
+### Um exemplo que Newton BT não funciona"""
+
+# ╔═╡ 787da96c-ea60-4d1b-8f7c-1175a68ed42c
+nlp_himmel = CUTEstModel("HIMMELBB")
+
+# ╔═╡ 6ddcee41-8e23-44ab-827e-7c34e1d7e49d
+newton_bt(nlp_himmel)
+
+# ╔═╡ f48a36a2-04b3-4c7a-86ed-8c4d80664199
+finalize(nlp_himmel)
+
+# ╔═╡ 20e8b10d-9e2c-4685-a0e3-731b540fa6b8
+nlp_box = CUTEstModel("BOX")
+
+# ╔═╡ d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
+newton_bt(nlp_box)
+
+# ╔═╡ 3bab6ea9-ac3f-43d7-968f-e3d78871984f
+newton(nlp_box)
+
+# ╔═╡ 5719e8c4-c321-4372-941c-b619887198f5
+md"""
+## BenchmarkProfiles.jl
+- O pacote `BenchmarkProfiles.jl` fornece uma fácil maneira de construir os Performance Profiles de Dolan e Moré. """
+
+# ╔═╡ db0af882-451d-49ed-b250-846cc537ed3e
+begin
+    T = 10 * rand(25,3);
+    plt = performance_profile(PlotsBackend(), T, ["Solver 1", "Solver 2", "Solver 3"], title="Celebrity Deathmatch")
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
-Ipopt = "b6b21f68-93f8-5de0-b562-5493be1d77c9"
+ADNLPModels = "54578032-b7ea-4c30-94aa-7cbd1cce6c9a"
+BenchmarkProfiles = "ecbce9bc-3e5e-569d-9e29-55181f61f8d0"
+CUTEst = "1b53aba6-35b6-5f92-a507-53c67d53f819"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
+NLPModelsJuMP = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-HiGHS = "~1.8.0"
-Ipopt = "~1.6.0"
-JuMP = "~1.18.1"
+ADNLPModels = "~0.7.0"
+BenchmarkProfiles = "~0.4.4"
+CUTEst = "~0.13.2"
+JuMP = "~1.19.0"
+NLPModels = "~0.20.0"
+NLPModelsJuMP = "~0.12.5"
 Plots = "~1.39.0"
-PlutoUI = "~0.7.55"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "f0b4aa5354096d468fd3a7fc6d99de21738fd415"
+project_hash = "0f5ce7a819b331f27d758c3a8b14c935157ad166"
 
-[[deps.ASL_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "6252039f98492252f9e47c312c8ffda0e3b9e78d"
-uuid = "ae81ac8f-d209-56e5-92de-9978fef736f9"
-version = "0.1.3+0"
+[[deps.ADNLPModels]]
+deps = ["ColPack", "ForwardDiff", "LinearAlgebra", "NLPModels", "Requires", "ReverseDiff", "SparseArrays"]
+git-tree-sha1 = "998be23c2c7719476475b4e6d0444d84b9cb97aa"
+uuid = "54578032-b7ea-4c30-94aa-7cbd1cce6c9a"
+version = "0.7.0"
 
-[[deps.AbstractPlutoDingetjes]]
-deps = ["Pkg"]
-git-tree-sha1 = "c278dfab760520b8bb7e9511b968bf4ba38b7acc"
-uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.2.3"
+[[deps.AMD]]
+deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
+git-tree-sha1 = "45a1272e3f809d36431e57ab22703c6896b8908f"
+uuid = "14f7f29c-3bd6-536c-9a0b-7339e30b5a3e"
+version = "0.5.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -347,6 +412,12 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.BenchmarkProfiles]]
+deps = ["CSV", "LaTeXStrings", "NaNMath", "Printf", "Requires", "Tables"]
+git-tree-sha1 = "9abfd0c22270e47522e44a21c4b1c56dd1841ea6"
+uuid = "ecbce9bc-3e5e-569d-9e29-55181f61f8d0"
+version = "0.4.4"
 
 [[deps.BenchmarkTools]]
 deps = ["JSON", "Logging", "Printf", "Profile", "Statistics", "UUIDs"]
@@ -365,11 +436,39 @@ git-tree-sha1 = "9e2a6b69137e6969bab0152632dcb3bc108c8bdd"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+1"
 
+[[deps.CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
+git-tree-sha1 = "679e69c611fff422038e9e21e270c4197d49d918"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.12"
+
+[[deps.CUTEst]]
+deps = ["CUTEst_jll", "DataStructures", "JSON", "Libdl", "LinearAlgebra", "NLPModels", "Pkg", "SparseArrays"]
+git-tree-sha1 = "756440bf0fcc05fe8c87279e0ca6bcad2cb3ab12"
+uuid = "1b53aba6-35b6-5f92-a507-53c67d53f819"
+version = "0.13.2"
+
+[[deps.CUTEst_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "07f32509cdcda92b517f8d2928abc375622ee03b"
+uuid = "bb5f6f25-f23d-57fd-8f90-3ef7bad1d825"
+version = "2.0.6+0"
+
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
 git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+1"
+
+[[deps.ChainRulesCore]]
+deps = ["Compat", "LinearAlgebra"]
+git-tree-sha1 = "1287e3872d646eed95198457873249bd9f0caed2"
+uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+version = "1.20.1"
+weakdeps = ["SparseArrays"]
+
+    [deps.ChainRulesCore.extensions]
+    ChainRulesCoreSparseArraysExt = "SparseArrays"
 
 [[deps.CodecBzip2]]
 deps = ["Bzip2_jll", "Libdl", "TranscodingStreams"]
@@ -382,6 +481,18 @@ deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "59939d8a997469ee05c4b4944560a820f9ba0d73"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.4"
+
+[[deps.ColPack]]
+deps = ["ColPack_jll", "LinearAlgebra", "Random", "SparseArrays"]
+git-tree-sha1 = "83a23545e7969d8b21fb85271b9cd04c8e09d08b"
+uuid = "ffa27691-3a59-46ab-a8d4-551f45b8d401"
+version = "0.3.0"
+
+[[deps.ColPack_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "2a518018a2b888ba529e944d34d4bd84b54d652d"
+uuid = "f218ff0c-cb54-5151-80c4-c0f62c730ce6"
+version = "0.3.0+0"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
@@ -430,7 +541,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.0.5+0"
 
 [[deps.ConcurrentUtilities]]
 deps = ["Serialization", "Sockets"]
@@ -453,6 +564,11 @@ deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
 git-tree-sha1 = "ac67408d9ddf207de5cfa9a97e114352430f01ed"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.18.16"
+
+[[deps.DataValueInterfaces]]
+git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
+uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
+version = "1.0.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -505,6 +621,11 @@ git-tree-sha1 = "4558ab818dcceaab612d1bb8c19cee87eda2b83c"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.5.0+0"
 
+[[deps.ExprTools]]
+git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.10"
+
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
 git-tree-sha1 = "b57e3acbe22f8484b4b5ff66a7499717fe1a9cc8"
@@ -516,6 +637,17 @@ deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers",
 git-tree-sha1 = "466d45dc38e15794ec7d5d63ec03d776a9aff36e"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.4.4+1"
+
+[[deps.FastClosures]]
+git-tree-sha1 = "acebe244d53ee1b461970f8910c235b259e772ef"
+uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+version = "0.3.2"
+
+[[deps.FilePathsBase]]
+deps = ["Compat", "Dates", "Mmap", "Printf", "Test", "UUIDs"]
+git-tree-sha1 = "9f00e42f8d99fdde64d40c8ea5d14269a2e2c1aa"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.21"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -543,12 +675,10 @@ deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "Lo
 git-tree-sha1 = "cf0fe81336da9fb90944683b8c41984b08793dad"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.36"
+weakdeps = ["StaticArrays"]
 
     [deps.ForwardDiff.extensions]
     ForwardDiffStaticArraysExt = "StaticArrays"
-
-    [deps.ForwardDiff.weakdeps]
-    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -561,6 +691,15 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
+
+[[deps.FunctionWrappers]]
+git-tree-sha1 = "d62485945ce5ae9c0c48f124a84998d755bae00e"
+uuid = "069b7b12-0de2-55c6-9aab-29f3d0a68a2e"
+version = "1.1.3"
+
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
@@ -615,62 +754,25 @@ git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
 
-[[deps.HiGHS]]
-deps = ["HiGHS_jll", "MathOptInterface", "PrecompileTools", "SparseArrays"]
-git-tree-sha1 = "2b650f670ad691b94f506e88b4f3ab591a13f809"
-uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
-version = "1.8.0"
-
-[[deps.HiGHS_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "10bf0ecdf70f643bfc1948a6af0a98be3950a3fc"
-uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
-version = "1.6.0+0"
-
-[[deps.Hwloc_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "ca0f6bf568b4bfc807e7537f081c81e35ceca114"
-uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
-version = "2.10.0+0"
-
-[[deps.Hyperscript]]
-deps = ["Test"]
-git-tree-sha1 = "179267cfa5e712760cd43dcae385d7ea90cc25a4"
-uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
-version = "0.0.5"
-
-[[deps.HypertextLiteral]]
-deps = ["Tricks"]
-git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
-uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.5"
-
-[[deps.IOCapture]]
-deps = ["Logging", "Random"]
-git-tree-sha1 = "8b72179abc660bfab5e28472e019392b97d0985c"
-uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.4"
+[[deps.InlineStrings]]
+deps = ["Parsers"]
+git-tree-sha1 = "9cc2baf75c6d09f9da536ddf58eb2f29dedaf461"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
-[[deps.Ipopt]]
-deps = ["Ipopt_jll", "LinearAlgebra", "MathOptInterface", "OpenBLAS32_jll", "PrecompileTools"]
-git-tree-sha1 = "3b646a77ae8818d72aa23e3e6924f481505e64fa"
-uuid = "b6b21f68-93f8-5de0-b562-5493be1d77c9"
-version = "1.6.0"
-
-[[deps.Ipopt_jll]]
-deps = ["ASL_jll", "Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "MUMPS_seq_jll", "SPRAL_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "080072ca6140bc26ca48307858c4a497654df83e"
-uuid = "9cc047cb-c261-5740-88fc-0cf96f7bdcc7"
-version = "300.1400.1303+0"
-
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
 version = "0.2.2"
+
+[[deps.IteratorInterfaceExtensions]]
+git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
+uuid = "82899510-4779-5014-852e-03e436cf321d"
+version = "1.0.0"
 
 [[deps.JLFzf]]
 deps = ["Pipe", "REPL", "Random", "fzf_jll"]
@@ -698,9 +800,9 @@ version = "3.0.1+0"
 
 [[deps.JuMP]]
 deps = ["LinearAlgebra", "MacroTools", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays"]
-git-tree-sha1 = "adef1dfbafeab635664fb3249b58be8d290ed49d"
+git-tree-sha1 = "5036b4cf6d85b08d80de09ef65b4d951f6e68659"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
-version = "1.18.1"
+version = "1.19.0"
 
     [deps.JuMP.extensions]
     JuMPDimensionalDataExt = "DimensionalData"
@@ -713,6 +815,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "f6250b16881adf048549549fba48b1161acdac8c"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.1+0"
+
+[[deps.LDLFactorizations]]
+deps = ["AMD", "LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "70f582b446a1c3ad82cf87e62b878668beef9d13"
+uuid = "40e66cde-538c-5869-a4ad-c39174c6795b"
+version = "0.10.1"
 
 [[deps.LERC_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -754,26 +862,21 @@ version = "0.16.1"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.4"
+version = "0.6.3"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.4.0+0"
+version = "7.84.0+0"
 
 [[deps.LibGit2]]
-deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
-
-[[deps.LibGit2_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
-uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
-version = "1.6.4+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.11.0+1"
+version = "1.10.2+0"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -830,6 +933,16 @@ version = "2.36.0+0"
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
+[[deps.LinearOperators]]
+deps = ["FastClosures", "LDLFactorizations", "LinearAlgebra", "Printf", "Requires", "SparseArrays", "TimerOutputs"]
+git-tree-sha1 = "58e2ca62646a62e18f86253b9c2a2d821c2d934b"
+uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+version = "2.6.0"
+weakdeps = ["ChainRulesCore"]
+
+    [deps.LinearOperators.extensions]
+    LinearOperatorsChainRulesCoreExt = "ChainRulesCore"
+
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
 git-tree-sha1 = "7d6dd4e9212aebaeed356de34ccf262a3cd415aa"
@@ -854,23 +967,6 @@ deps = ["Dates", "Logging"]
 git-tree-sha1 = "c1dd6d7978c12545b4179fb6153b9250c96b0075"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "1.0.3"
-
-[[deps.METIS_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "1fd0a97409e418b78c53fac671cf4622efdf0f21"
-uuid = "d00139f3-1899-568f-a2f0-47f597d42d70"
-version = "5.1.2+0"
-
-[[deps.MIMEs]]
-git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
-uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
-version = "0.1.4"
-
-[[deps.MUMPS_seq_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "METIS_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "78fedbcf96bd35682fed2a9dda35ea871cfb734c"
-uuid = "d7ed1dd3-d0ae-5e8e-bfb4-87a502085b8d"
-version = "500.600.200+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -897,7 +993,7 @@ version = "1.1.9"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+1"
+version = "2.28.2+0"
 
 [[deps.Measures]]
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
@@ -915,13 +1011,25 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2023.1.10"
+version = "2022.10.11"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
 git-tree-sha1 = "806eea990fb41f9b36f1253e5697aa645bf6a9f8"
 uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 version = "1.4.0"
+
+[[deps.NLPModels]]
+deps = ["FastClosures", "LinearAlgebra", "LinearOperators", "Printf", "SparseArrays"]
+git-tree-sha1 = "51b458add76a938917772ee661ffb9d59b4c7e5d"
+uuid = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
+version = "0.20.0"
+
+[[deps.NLPModelsJuMP]]
+deps = ["JuMP", "LinearAlgebra", "MathOptInterface", "NLPModels", "Printf", "SolverCore", "SparseArrays"]
+git-tree-sha1 = "857a6fe3c5ce6cd45f33398dff62bfe77859586a"
+uuid = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
+version = "0.12.5"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -939,21 +1047,15 @@ git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
 version = "1.3.5+1"
 
-[[deps.OpenBLAS32_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "2fb9ee2dc14d555a6df2a714b86b7125178344c2"
-uuid = "656ef2d0-ae68-5445-9ca0-591084a874a2"
-version = "0.3.21+0"
-
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.21+4"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+2"
+version = "0.8.1+0"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
@@ -963,9 +1065,9 @@ version = "1.4.1"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "cc6e1927ac521b659af340e0ca45828a3ffc748f"
+git-tree-sha1 = "60e3045590bd104a16fefb12836c00c0ef8c7f8c"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.0.12+0"
+version = "3.0.13+0"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -987,7 +1089,7 @@ version = "1.6.3"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+1"
+version = "10.42.0+0"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
@@ -1009,7 +1111,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.10.0"
+version = "1.9.2"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
@@ -1043,11 +1145,11 @@ version = "1.39.0"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[[deps.PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "68723afdb616445c6caaef6255067a8339f91325"
-uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.55"
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
@@ -1080,7 +1182,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RecipesBase]]
@@ -1112,21 +1214,27 @@ git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
 
+[[deps.ReverseDiff]]
+deps = ["ChainRulesCore", "DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAlgebra", "LogExpFunctions", "MacroTools", "NaNMath", "Random", "SpecialFunctions", "StaticArrays", "Statistics"]
+git-tree-sha1 = "d1235bdd57a93bd7504225b792b867e9a7df38d5"
+uuid = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+version = "1.15.1"
+
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
-
-[[deps.SPRAL_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "Libdl", "METIS_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "75c79a668a0add199c8f3f06c7300318237dda73"
-uuid = "319450e9-13b8-58e8-aa9f-8fd1420848ab"
-version = "2023.11.15+0"
 
 [[deps.Scratch]]
 deps = ["Dates"]
 git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
+
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "0e7508ff27ba32f26cd459474ca2ede1bc10991f"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.1"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -1145,6 +1253,12 @@ version = "1.1.0"
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[[deps.SolverCore]]
+deps = ["LinearAlgebra", "NLPModels", "Printf"]
+git-tree-sha1 = "9fb0712d597d6598857ae50b7744df17b1137b38"
+uuid = "ff4d7338-4cf1-434d-91df-b86cb86fb843"
+version = "0.3.7"
+
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
 git-tree-sha1 = "66e0a8e672a0bdfca2c3f5937efb8538b9ddc085"
@@ -1154,19 +1268,27 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.10.0"
 
 [[deps.SpecialFunctions]]
 deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
 git-tree-sha1 = "e2cfc4012a19088254b3950b85c3c1d8882d864d"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "2.3.1"
+weakdeps = ["ChainRulesCore"]
 
     [deps.SpecialFunctions.extensions]
     SpecialFunctionsChainRulesCoreExt = "ChainRulesCore"
 
-    [deps.SpecialFunctions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+[[deps.StaticArrays]]
+deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
+git-tree-sha1 = "7b0e9c14c624e435076d19aea1e5cbdec2b9ca37"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "1.9.2"
+weakdeps = ["ChainRulesCore", "Statistics"]
+
+    [deps.StaticArrays.extensions]
+    StaticArraysChainRulesCoreExt = "ChainRulesCore"
+    StaticArraysStatisticsExt = "Statistics"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "36b3d696ce6366023a0ea192b4cd442268995a0d"
@@ -1176,7 +1298,7 @@ version = "1.4.2"
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.10.0"
+version = "1.9.0"
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1191,14 +1313,26 @@ uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.2"
 
 [[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
+deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.2.1+1"
+version = "5.10.1+6"
 
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
+
+[[deps.TableTraits]]
+deps = ["IteratorInterfaceExtensions"]
+git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
+uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
+version = "1.0.1"
+
+[[deps.Tables]]
+deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "LinearAlgebra", "OrderedCollections", "TableTraits"]
+git-tree-sha1 = "cb76cf677714c095e535e3501ac7954732aeea2d"
+uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+version = "1.11.1"
 
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
@@ -1215,6 +1349,12 @@ version = "0.1.1"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.23"
+
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "1fbeaaca45801b4ba17c251dd8603ef24801dd84"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
@@ -1223,11 +1363,6 @@ weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
     TestExt = ["Test", "Random"]
-
-[[deps.Tricks]]
-git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
-uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.8"
 
 [[deps.URIs]]
 git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
@@ -1289,6 +1424,17 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "93f43ab61b16ddfb2fd3bb13b3ce241cafb0e6c9"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.31.0+0"
+
+[[deps.WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
+
+[[deps.WorkerUtilities]]
+git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
+uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
+version = "1.6.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
@@ -1455,7 +1601,7 @@ version = "1.5.0+0"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+1"
+version = "1.2.13+0"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1496,7 +1642,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.8.0+0"
 
 [[deps.libevdev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1537,12 +1683,12 @@ version = "1.1.6+0"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.52.0+1"
+version = "1.48.0+0"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+2"
+version = "17.4.0+0"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1564,41 +1710,64 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╟─b08d6f28-9c29-4d73-957f-a2385514b0c1
-# ╟─cbb94315-4bbe-44cf-8de1-1250d4d3bbe9
-# ╟─af01283f-8afd-4f1f-8cdb-c12f34d24c0f
-# ╟─319606b0-06be-49b3-9804-09588df84b40
-# ╠═551a6584-9534-4d04-a4f0-e07f4ef78233
-# ╟─b4e4ec0b-4fa1-405c-a704-330e99d7e08e
-# ╠═cbde2f19-feaf-4be2-93c9-7f49b2c5855a
-# ╟─9852ab34-97cf-4b26-847f-4b5db935e79d
-# ╠═ba4b6a47-3edd-4ca4-a8a0-57c0fbecae03
-# ╠═aedf693c-410f-4f14-a466-bcad4222582f
-# ╟─0820ad44-04b8-41a4-9543-a9ae46c7f06b
-# ╟─201d8a53-552d-4831-8fa8-47cc5e6dff4d
-# ╟─7d15fd80-7d1f-4148-958b-8410ecf5a095
-# ╟─60e6246b-a54c-40ec-9022-f57d792b489f
-# ╟─0107785e-7c07-446e-8965-02d4915130ac
-# ╟─7a050ef0-9017-4c0f-9434-df20781a1951
-# ╟─60eb40b1-6471-4e4e-acd3-030bc4bd50a4
-# ╟─f81b8773-97d6-4d4c-a193-180674ee0095
-# ╟─fc9d90f8-ef14-4a3f-960b-2a7fb12fd4d4
-# ╠═e57f571b-a5e4-4831-ac9f-3030a511759b
-# ╠═0ccf0c79-c462-4940-9137-c78f0865af40
-# ╠═f42a5272-14af-4ddb-84fd-5ebef7d39b4b
-# ╠═a580e01f-468f-4e48-b130-68368b1213bf
-# ╠═3025b770-41f0-45de-b95e-6ffbbb6716c6
-# ╠═f8e82221-49d8-4923-bff3-d5e906069e39
-# ╠═953959e4-e31b-415d-b39c-602bdd2401c0
-# ╠═3a4ebe46-4865-42ea-9d4e-9e353f3b6cb2
-# ╠═c13bcad6-1402-45ff-806b-2e7b640ffaff
-# ╠═e27c7dbf-00a1-4d14-bc2a-60378c066eac
-# ╠═e92e4f60-8a48-40d5-886b-eeddd8ceaea6
-# ╟─82e741d2-7238-43ab-893b-259e328035ba
-# ╠═4840eab7-f606-4781-83ca-90a0381f9585
-# ╠═51e64021-1527-4082-887f-def21cd80504
-# ╠═ea0971d5-5195-4f62-a08a-bf039fa7b5de
-# ╠═cf1be8dc-75cb-48eb-a81b-9591da7c79e7
-# ╠═ecd525c8-6b0d-4e9c-9c97-bf1be1b8030a
+# ╟─939da41f-839a-4ad8-b226-4b3d4fe78f0a
+# ╟─225b92e8-3bc1-4b8a-8bae-7b01de881b49
+# ╟─98eb4816-8251-4a65-b68d-65d9e18cde8b
+# ╠═13aa94c4-687a-4d5c-ab04-2fbe9045ee0f
+# ╟─3b799acd-47a8-4411-8997-009ff541ac53
+# ╟─1412a7d1-6628-47bb-9bcd-4bc87b4a9579
+# ╠═5a80bca7-d433-4e4f-a634-2e07bbda6afa
+# ╟─fddd97dd-c3f2-4c15-b1a1-9d94e9f026d7
+# ╟─bfb3be3c-348c-47d7-a6bb-e1b3f6f45447
+# ╠═cc06c78f-64e9-45cd-9f37-c47a121c4819
+# ╟─0b82f325-2366-484c-97ac-3c06aa42299c
+# ╠═d7332e5a-6cae-4730-ad63-673aac4c3fa0
+# ╟─08563857-0435-48c2-9140-88ef0ecd7fe8
+# ╠═6eea5a33-994f-49cc-9ec9-b81637e09f7b
+# ╠═cbbd7ef8-7edc-4437-a6a9-578970bbf2df
+# ╟─de0c5fc2-d51f-4667-9aaa-11817141236b
+# ╠═2338b5b8-63c2-4980-a510-1ba7689f3da5
+# ╠═1d918e2e-0130-40ca-817c-ff617abcd096
+# ╠═47a8a32d-d6a1-4cf5-baf4-3530f819b701
+# ╠═7edfe366-6ffb-4f60-9e5e-d0bd769e2cf3
+# ╠═9a10288f-f902-432d-aa54-8a8f9d4169a3
+# ╟─707140b3-a3f4-495f-8a92-6138046b5694
+# ╠═1cf5fb46-951e-4b1d-aed6-0add01d2f30c
+# ╠═e3b1ebe4-8ec8-436b-80ed-ed8dd7b5baa6
+# ╠═66707443-e267-4859-985a-ffd5b34e0ef8
+# ╟─7a6ffe6b-3bec-48ea-8b26-66f00830bb90
+# ╠═822fb793-2193-4716-b73f-86fcd133eb46
+# ╠═ff060319-e465-46ac-9069-4c6644a9f9ea
+# ╠═9ca409b1-0fb7-469f-8ce7-8a00a9251c21
+# ╟─ae0e932a-9900-48dc-b8f5-f3e8f77dcb51
+# ╠═fad4f8d2-3bc0-4689-adca-0eb4cc61e2a2
+# ╠═a2b62afa-1a37-4a8e-9afa-4976e4b8450f
+# ╟─a4ed64db-d5da-4254-b113-63e7d65c1e36
+# ╟─9d0eff7c-ce65-4046-883c-6edf494b3fd9
+# ╠═e509e504-984f-4048-8e6c-4c86f525a66a
+# ╠═b50e599d-9def-4e64-bee5-7e45c94d7d8b
+# ╟─113f535d-579f-43e5-880a-d5a4ba12acef
+# ╠═2c3c9070-f8a0-4d81-88d1-fad53dabe3e9
+# ╠═d17bc84d-611d-4e7a-ae14-06584448c3ba
+# ╟─0f381bd7-065f-4e7e-a9ab-b6bbaf1a869a
+# ╠═36045b7a-9714-48d0-8594-da74204d9df0
+# ╠═21f54f3c-697f-48af-a6d5-658e41512b1c
+# ╠═febfa521-4cc0-401a-9505-f1e4ee22d468
+# ╠═c248b331-d2cd-4270-b24e-272ee8cbebe2
+# ╠═e4d8a64c-8c46-453e-b540-25942c18adf7
+# ╟─3c0de4c1-275d-4491-894d-a08fcc132c84
+# ╠═648f21a8-0862-41ac-ba21-4f84f86ded87
+# ╠═4949b3f7-00b1-4a77-9508-6771559fa9ee
+# ╠═25d0693f-5c0b-4594-8a6b-b66295175be6
+# ╟─3f499c08-7b63-44ec-8fce-4ebc5d84a8ea
+# ╠═787da96c-ea60-4d1b-8f7c-1175a68ed42c
+# ╠═6ddcee41-8e23-44ab-827e-7c34e1d7e49d
+# ╠═f48a36a2-04b3-4c7a-86ed-8c4d80664199
+# ╠═20e8b10d-9e2c-4685-a0e3-731b540fa6b8
+# ╠═d35a17b7-1e82-430c-b3cd-b10cfe2c0a78
+# ╠═3bab6ea9-ac3f-43d7-968f-e3d78871984f
+# ╟─5719e8c4-c321-4372-941c-b619887198f5
+# ╠═dac805e5-dea4-4102-aa71-0a1168e11d4c
+# ╠═db0af882-451d-49ed-b250-846cc537ed3e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
