@@ -107,16 +107,16 @@ begin
     # Modelo e Solver
     model = Model(HiGHS.Optimizer)
     
-    # Variaveis, canalizações (ou caixas) e tipo
-    @variable(model,x>=0)
-    @variable(model,y>=0)
+    # Variáveis, canalizações (ou caixas) e tipo
+    @variable(model, x ≥ 0)
+    @variable(model, y >= 0)
     
     # Restrições
-    @constraint(model,3x + 4y <=24)
-    @constraint(model,5x + 12y <=48)
+    @constraint(model, R1, 3x + 4y ≤ 24)
+    @constraint(model, 5x + 12y <= 48)
     
     # Função objetivo
-    @objective(model,Min,-12x -20y)
+    @objective(model, Min, -12x -20y)
     
     print(model)
 end
@@ -130,7 +130,7 @@ begin
     @show value(x)
     @show value(y)
     @show objective_value(model)
-    plot_factivel()
+    plot_feasible()
     scatter!([value(x)],[value(y)],label="Solução")
 end
 
@@ -145,7 +145,7 @@ md"""
 * Um modelo pode ser criado sem o solver
 
 ```julia
-model = Model(HiHGS.Optimizer)
+model = Model(HiGHS.Optimizer)
 ``` """
 
 # ╔═╡ 7d15fd80-7d1f-4148-958b-8410ecf5a095
@@ -211,7 +211,7 @@ $(Resource("https://upload.wikimedia.org/wikipedia/commons/1/1f/Eight-queens-ani
 
 # ╔═╡ e57f571b-a5e4-4831-ac9f-3030a511759b
 begin
-    N = 4
+    N = 64
     Nrainhas = Model(HiGHS.Optimizer)
     
     #Definindo as variáveis
@@ -220,21 +220,25 @@ end
 
 # ╔═╡ f42a5272-14af-4ddb-84fd-5ebef7d39b4b
 # Restrições em relação a soma das linhas
-@constraint(Nrainhas,[sum(queens[i,:]) for i=1:N] .== 1)
+for i in 1:N
+	@constraint(Nrainhas,sum(queens[i,:]) == 1)
+end
 
 # ╔═╡ 0ccf0c79-c462-4940-9137-c78f0865af40
 # Restrições em relação a soma das colunas
 @constraint(Nrainhas,[sum(queens[:,j]) for j=1:N] .== 1)
 
 # ╔═╡ a580e01f-468f-4e48-b130-68368b1213bf
-queens
+
 
 # ╔═╡ 3025b770-41f0-45de-b95e-6ffbbb6716c6
-diag(queens,3)
+diag(queens,-3)
 
 # ╔═╡ f8e82221-49d8-4923-bff3-d5e906069e39
 # Restrições das diagonais principais
-@constraint(Nrainhas,[sum(diag(queens,i)) for i = -(N-1):(N-1)] .<=1)
+for i ∈ -(N-1):(N-1)
+	@constraint(Nrainhas,sum(diag(queens,i)) .<=1)
+end
 
 # ╔═╡ 953959e4-e31b-415d-b39c-602bdd2401c0
 queens
@@ -250,7 +254,7 @@ reverse(queens,dims=1)
 optimize!(Nrainhas)
 
 # ╔═╡ e92e4f60-8a48-40d5-886b-eeddd8ceaea6
-Int.(value.(queens))
+round.(Int,value.(queens))
 
 # ╔═╡ 82e741d2-7238-43ab-893b-259e328035ba
 md"""
@@ -316,7 +320,7 @@ PlutoUI = "~0.7.55"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.3"
+julia_version = "1.10.0"
 manifest_format = "2.0"
 project_hash = "f0b4aa5354096d468fd3a7fc6d99de21738fd415"
 
@@ -424,7 +428,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
+version = "1.0.5+1"
 
 [[deps.ConcurrentUtilities]]
 deps = ["Serialization", "Sockets"]
@@ -748,21 +752,26 @@ version = "0.16.1"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
+version = "0.6.4"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.84.0+0"
+version = "8.4.0+0"
 
 [[deps.LibGit2]]
-deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[deps.LibGit2_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
+uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
+version = "1.6.4+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -886,7 +895,7 @@ version = "1.1.9"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
+version = "2.28.2+1"
 
 [[deps.Measures]]
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
@@ -904,7 +913,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
+version = "2023.1.10"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -937,12 +946,12 @@ version = "0.3.21+0"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
+version = "0.3.23+2"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
+version = "0.8.1+2"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
@@ -976,7 +985,7 @@ version = "1.6.3"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+0"
+version = "10.42.0+1"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
@@ -998,7 +1007,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
+version = "1.10.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
@@ -1069,7 +1078,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA", "Serialization"]
+deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RecipesBase]]
@@ -1143,6 +1152,7 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.10.0"
 
 [[deps.SpecialFunctions]]
 deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
@@ -1164,7 +1174,7 @@ version = "1.4.2"
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.9.0"
+version = "1.10.0"
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1179,9 +1189,9 @@ uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.2"
 
 [[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
+version = "7.2.1+1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1443,7 +1453,7 @@ version = "1.5.0+0"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
+version = "1.2.13+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1484,7 +1494,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
+version = "5.8.0+1"
 
 [[deps.libevdev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1525,12 +1535,12 @@ version = "1.1.6+0"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.48.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+0"
+version = "17.4.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1554,8 +1564,8 @@ version = "1.4.1+1"
 # ╔═╡ Cell order:
 # ╟─b08d6f28-9c29-4d73-957f-a2385514b0c1
 # ╟─cbb94315-4bbe-44cf-8de1-1250d4d3bbe9
-# ╠═af01283f-8afd-4f1f-8cdb-c12f34d24c0f
-# ╠═319606b0-06be-49b3-9804-09588df84b40
+# ╟─af01283f-8afd-4f1f-8cdb-c12f34d24c0f
+# ╟─319606b0-06be-49b3-9804-09588df84b40
 # ╠═551a6584-9534-4d04-a4f0-e07f4ef78233
 # ╟─b4e4ec0b-4fa1-405c-a704-330e99d7e08e
 # ╠═cbde2f19-feaf-4be2-93c9-7f49b2c5855a

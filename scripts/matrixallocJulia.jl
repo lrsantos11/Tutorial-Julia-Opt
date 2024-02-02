@@ -1,10 +1,12 @@
 __precompile__()
-using BenchmarkTools, LinearAlgebra
+# using BenchmarkTools
+
+using LinearAlgebra
 
 function AddMatRowWise!(MatrixA::Matrix{Float64})
     NumRows,NumCols = size(MatrixA)
-    for  i = 1:NumRows
-        for j = 1:NumCols
+    @inbounds for  i = 1:NumRows
+        @inbounds for j = 1:NumCols
             MatrixA[i,j] = 10*i + j
         end
     end
@@ -13,8 +15,8 @@ end
 
 function AddMatColWise!(MatrixA::Matrix{Float64})
     NumRows,NumCols = size(MatrixA)
-    for  j = 1:NumCols
-        for i = 1:NumRows
+    @inbounds for  j = 1:NumCols
+        @inbounds for i = 1:NumRows
             MatrixA[i,j] = 10*i + j
         end
     end
